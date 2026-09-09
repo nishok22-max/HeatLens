@@ -1,13 +1,21 @@
-# Heat Stress Early Warning — backend
+# HeatLens
 
-Human thermal stress and heat-health risk at neighbourhood scale, for Indian
-cities. SIH problem statement: *Extreme Heatwave Early Warning and Human Thermal
-Stress Index*.
+**Neighbourhood-scale heatwave early warning and human thermal stress index for Indian cities.**
 
-**Repo location:** `C:\Users\HP\sih-heat`
-(not `D:\S I H 2 6 0 8 3` — that path is read-only at the NTFS level: `BUILTIN\Users`
-has `(RX)` only. To use it instead, run elevated:
-`icacls "D:\S I H 2 6 0 8 3" /grant "$env:USERNAME:(OI)(CI)F" /T`)
+🔗 **[Live demo →](https://nishok22-max.github.io/HeatLens/)**  ·  Ahmedabad pilot, May 2010 hindcast + live 5-day forecast
+
+SIH problem statement: *Extreme Heatwave Early Warning and Human Thermal Stress Index*.
+
+HeatLens computes WBGT (Liljegren), UTCI and the NOAA Heat Index for every H3
+cell in a city, downscaled by urban form derived from OpenStreetMap. It ships
+181 tests that validate the physics against published reference values, and the
+whole demo runs offline from a single self-contained HTML file.
+
+> **Before quoting any number from this project**, read
+> [Read this before quoting any number](#read-this-before-quoting-any-number).
+> Three layers are explicitly not measured — the UHI amplitude is assumed,
+> vulnerability is a declared placeholder, and the exposure-response function is
+> not calibrated to local health records.
 
 ---
 
@@ -16,7 +24,7 @@ has `(RX)` only. To use it instead, run elevated:
 Everything below assumes you are in the repo root:
 
 ```powershell
-cd C:\Users\HP\sih-heat
+cd <repo>
 ```
 
 ### Run the tests
@@ -196,7 +204,7 @@ and the bundled numbers stay on screen. Route names live in exactly one place
 React + TypeScript + Vite, in `frontend/`.
 
 ```powershell
-cd C:\Users\HP\sih-heat\frontend
+cd <repo>\frontend
 npm install
 npm run dev      # development, http://localhost:5173
 npm run build    # production -> frontend/dist/index.html
