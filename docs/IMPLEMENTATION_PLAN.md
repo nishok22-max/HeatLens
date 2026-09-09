@@ -199,7 +199,7 @@ The work now in progress. Ordered so that **the highest-honesty work ships first
 | **5D** | **Wire it in — the headline result.** `scripts/12_downscaled_offsets.py` writes a superset data file; a three-level file resolver; re-run 04→05→06→07; **re-bake both data folders**; regenerate the deck and case-study maps *inside this phase* | 2–3 h | 5C passing its own test |
 | **5E** | **Population exposure.** Add a population-backed vulnerability surface alongside — not replacing — the placeholder; split the provenance row in two; allow exactly one narrowly-defined, checkable population statistic and keep refusing the rest | 2–3 h | 5B |
 | **5F** | **Finish what-if.** Model-based greening, population-weighted outcomes, a **pre-baked** 48-row scenario grid so sliders work offline, and cooling-centre placement (`siting.py`, FR-15) | 2–3 h | 5C, 5E |
-| **5G** | **Chatbot** — a question-answering agent over the project's own documents and numbers, with a guard that stops it inventing figures. English text only for the first version | ~13 h | 5A–5F for its data |
+| **5G** | **Chatbot (FR-23)** — a tool-calling agent over the project's own numbers and documents, with a numeric guard that makes inventing a figure structurally impossible rather than merely discouraged. English text only in the MVP; retrieval and multilingual/voice are upside. **Design in §5.4** | ~13 h | 5A–5F for its data |
 | **5H** | **Documentation.** This file, the PRD, the architecture doc, and a new `docs/DECISIONS.md` | 2–3 h | continuous |
 
 **Already done out of 5A** (in the honesty pass that produced this document): the false scipy claim corrected in `README.md` and in `physiology.py`, `solar.py`, `sources/osm.py`, `vulnerability.py`; the test count corrected everywhere including `docs/deck/build.py`; the product name unified to HeatLens across the API and the frontend (`server.py`, the second backend, has since been deleted -- `api/main.py` is the only one); and a real bug fixed in the what-if scenario (§7.10).
@@ -260,6 +260,74 @@ siting:                           # NEW
 | 5H | No file claims scipy is blocked; no file says 135 tests; one product name; `docs/DECISIONS.md` records D2 as **superseded**, not deleted |
 
 The suite is expected to grow from 181 to roughly 200 (5A +4, 5C +5, 5E +4, 5F +3, plus the vocabulary test).
+
+---
+
+### 5.4 Phase 5G — the chatbot, in full
+
+The single largest block in Phase 5 and the biggest demo win, so it is specified
+here rather than left as a table row. **It is a tool-calling agent with hybrid
+retrieval, not a chat wrapper over a prompt.** The distinction is the whole
+design: the agent may only state numbers that a tool handed it.
+
+**Why this shape.** Every other part of this project can be checked — two
+independent physics implementations agreeing to 0.005 °C, a kill gate declared
+before it was measured, a model pass mark written into config before fitting. A
+chatbot that answers from a language model's recall would be the one component
+nobody can audit, bolted onto a system whose entire argument is auditability. So
+the agent is built the other way round: **the model chooses tools and writes
+prose; it never supplies a figure.**
+
+**Three guards, in order of importance.**
+
+1. **Numeric guard.** Every number in an answer must be traceable to a tool
+   return. Any figure that is not is rejected before the answer is emitted —
+   this is a post-check on the generated text, not an instruction in the prompt,
+   because an instruction is a request and a check is a guarantee.
+2. **Refusal table.** An explicit list of questions the data cannot honestly
+   answer: casualty or death counts (`ExposureResponse.is_calibrated` is
+   `False`), "is this validated?" (the honest answer is "cross-checked against
+   held-out satellite observations", never "validated"), and per-household or
+   per-person claims. **The table is versioned against the phases**: when 5E
+   lands real population, the bot must stop refusing headcounts on a premise
+   that is no longer true — and must keep refusing the ones that are still
+   fabrication. A stale refusal is as dishonest as a stale claim.
+3. **Verbatim advisory substitution.** Public-health instructions are returned
+   exactly as `advisory.py` composed them. A paraphrased instruction is a new
+   instruction that nobody reviewed, and the Hindi and Gujarati strings are not
+   yet native-speaker verified even in their original form.
+
+**Retrieval.** Hybrid — structured lookups into the baked payloads for anything
+numeric, and dense retrieval over the project's own markdown for "why" and "how"
+questions. Embeddings come from `model2vec` (`minishlab/potion-base-8M`, ~30 MB
+static, no GPU, no inference server), so the index builds in seconds and neither
+the corpus nor the question leaves the machine. `scripts/09` builds the index;
+`scripts/10` is the answer-quality eval.
+
+**Tools.** The existing payload readers, plus four that unlock as A–F land:
+`get_lst_anomaly` (measured LST with `n_valid_px` and `d_ta_source`),
+`get_population_exposure` (the narrowly-defined statistic from 5E, carrying its
+caveat field), `get_model_card` (spatial-CV metrics and conformal coverage), and
+`run_siting`. The parameterised shade/greening/warming scenario tools need the
+`insights["frame"]` emit — per-cell `ta/rh/wind/ghi` at the focus hour, ~20 KB,
+placed **inside** `insights` so `PAYLOAD_FILES` and the frontend types are
+untouched. Phase 5F wants the same emit, so it is built once.
+
+**Wiring.** `api/chat.py` exposes `APIRouter(prefix="/api/chat")`; `api/main.py`
+gains one import and one `include_router`. Nothing else in the API changes.
+
+**The offline rule is not negotiable.** D16 says the API may never become a
+demo dependency, so the chat panel **hides itself** when `/api/health` does not
+answer. A chat box that cannot reach its tools cannot cite anything, and a
+citation-less answer from this system would be worse than no answer.
+
+**New dependencies:** `python-dotenv` and `model2vec`. Nothing else.
+
+**Gate.** `curl -X POST localhost:8000/api/chat` returns a grounded answer with
+a visible tool trace; *"how many people are at risk?"* returns the **narrowed**
+statistic with its caveat — not the old blanket refusal, and not a casualty
+figure; *"is this model validated?"* returns "cross-validated against held-out
+satellite observations" and never the bare word "validated".
 
 ---
 

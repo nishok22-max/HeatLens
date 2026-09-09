@@ -355,7 +355,9 @@ Planned in Phase 5 (§9):
   downscale.py         Ridge fit, spatial block CV, conformal intervals, predict
   killgate.py          verdict() pulled out of script 05 so it can be tested
   siting.py            greedy best-coverage cooling-centre placement
+  api/chat.py          tool-calling agent, numeric guard, refusal table (FR-23)
   scripts/01, 11, 12   satellite export · fit model · apply offsets
+  scripts/09, 10       chatbot retrieval index · answer-quality eval
 ```
 
 ### 5.1 Every number computed twice, on purpose
@@ -397,6 +399,7 @@ A decision log is only worth keeping if reversals stay visible. Two entries belo
 | D16 | **FastAPI added, but never something the demo depends on** | Accepted | The offline build remains the NFR-1 guarantee. The API is additive: live refresh, networked browser clients, and later the chatbot. Anything that would make the page *require* it is out of bounds. |
 | D17 | **MapLibre GL removed, replaced with a hand-built SVG map** | Accepted | MapLibre loads its parser in a web worker, and Chrome refuses to create a worker for a page opened from a local file — so the map rendered blank from disk, a direct NFR-1 violation. 392 polygons is trivial geometry. Removing it also dropped ~1.5 MB from the bundle, fixed a styling bug, and brought real keyboard access and correct printing. *(Moved here from `IMPLEMENTATION_PLAN.md` §4.1, where an architectural fact was buried in a frontend note.)* |
 | D18 | **One product name: HeatLens. The package stays `heatstress`** | Accepted | Six names were in circulation (HeatLens, HEATSHIELD, Hydra, Heatblast, HeatTwin, "Heat Stress Early Warning") — `api/main.py` alone used two. The UI and docs now use one. The package name stays deliberately different and must not be renamed. Committed `.pptx`/`.pdf` files are left alone and renamed when next regenerated. |
+| D19 | **The chatbot answers from tools, never from recall — and removes itself when the API is down** | Accepted 🚧 | A model that can state a number it was never given will eventually state a wrong one, and this project's entire claim is that its numbers are checkable. So every figure in an answer must come back from a tool call over the baked payloads; a numeric guard rejects any that did not; a refusal table covers what the data cannot honestly answer; and advisory copy is substituted verbatim, because a reworded public-health instruction is a new instruction nobody approved. Retrieval runs locally on a ~30 MB static embedding model, so no corpus and no question leaves the machine. NFR-1 outranks the feature: when `/api/health` does not answer the panel hides rather than degrading into a chat box that cannot cite anything. Full design in `IMPLEMENTATION_PLAN.md` §5.4. |
 
 ---
 
