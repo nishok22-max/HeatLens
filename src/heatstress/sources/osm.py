@@ -6,8 +6,10 @@ neighbourhoods are dense impervious mass and which are green or watered.
 WHY THIS AND NOT SATELLITE LST, FOR THE PROTOTYPE
 -------------------------------------------------
   * no registration, no API key, no approval wait
-  * pure JSON over HTTP -- no GeoTIFF, no rasterio/GDAL, so it is immune to the
-    Application Control policy that blocks compiled extensions on this machine
+  * pure JSON over HTTP -- no GeoTIFF, no rasterio/GDAL. That matters for
+    portability and CI install time, not because compiled extensions are blocked
+    here (they are not). The satellite path added later avoids GDAL the same way,
+    by reducing server-side in Earth Engine and fetching only numbers
   * works for any city on earth immediately, which is what makes adding a second
     (humid) pilot city a two-line change rather than a new scene hunt
   * it is the same signal WUDAPT Local Climate Zones encode, just computed from

@@ -8,9 +8,11 @@ weather variables:
   * ``fdir``    -- the fraction of global irradiance arriving as direct beam
     rather than diffuse sky.
 
-Both are computed here in pure numpy. No scipy: an Application Control policy on
-the target machine blocks scipy's compiled optimisation extensions, so every
-model in this project must be closed-form.
+Both are computed here in pure numpy and closed-form. Not because scipy is
+unavailable -- it imports fine -- but because a closed-form solar position has no
+iteration to diverge, runs vectorised over 392 cells x 264 hours without thought,
+and keeps the dependency list short enough that the 6-hourly CI job installs in
+seconds.
 
 All angles are radians internally and degrees at the public surface.
 Times are **UTC**. Ahmedabad is UTC+5:30 -- convert before calling.

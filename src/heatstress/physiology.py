@@ -9,16 +9,20 @@ WHY NOT ISO 7933 PHS
 --------------------
 The plan called for the ISO 7933 Predicted Heat Strain model, which integrates a
 body heat balance to give a core-temperature trajectory. It lives in
-``pythermalcomfort``, which cannot be imported on the target machine: Windows
-Application Control blocks a compiled ``scipy.optimize`` DLL that the package
-pulls in transitively.
+``pythermalcomfort``.
 
-So this module uses the other standard route to the same operational answer:
+An earlier version of this docstring said that package could not be imported
+because Windows Application Control blocked a compiled ``scipy.optimize`` DLL.
+That is no longer true: ``scipy 1.18.1``, ``scipy.optimize`` and
+``pythermalcomfort 4.4.2`` all import cleanly here. The choice below is therefore
+a choice, not a constraint -- and it still holds.
+
+This module uses the other standard route to the same operational answer:
 **ISO 7243 WBGT reference limits** combined with **ACGIH/NIOSH work-rest
 allocation**. These are lookup tables rather than a differential equation, which
 means:
 
-  + no scipy, no solver, no convergence failures on stage
+  + no solver and no convergence failure can happen mid-demo
   + they are what occupational hygienists and labour inspectors actually use,
     so the output maps directly onto a decision an official can sign
   - no core-temperature *curve*, only a work/rest allocation

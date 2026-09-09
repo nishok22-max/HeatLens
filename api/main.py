@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     # Cancel the task on shutdown
     task.cancel()
 
-app = FastAPI(title="Heatblast API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="HeatLens API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -113,6 +113,43 @@ def load_json(filename: str, is_live: bool = False):
         return live.read_json_retry(file_path)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Data file not found: {filename}")
+
+# --------------------------------------------------------------------------
+# UNIFIED FRONTEND API ENDPOINTS (/api/health, /api/heat-data)
+# --------------------------------------------------------------------------
+
+@app.get("/api/health")
+def get_health():
+    return {
+        "status": "ok",
+        "server": "HeatLens Thermal Intelligence API",
+        "version": "1.0.0",
+        "city": "Ahmedabad",
+        "mode": "live" if live_cache else "historical",
+    }
+
+@app.get("/api/heat-data")
+def get_heat_data(dataset: str = "live"):
+    is_live = dataset == "live"
+    if is_live and live_cache:
+        return {
+            "meta": live_cache["meta"],
+            "hexes": live_cache["map"],
+            "hourly": live_cache["hourly"],
+            "city": live_cache["summary"],
+            "personas": live_cache["personas"],
+            "advisory": live_cache["advisory"],
+            "insights": live_cache["insights"],
+        }
+    return {
+        "meta": load_json("meta.json", is_live=is_live),
+        "hexes": load_json("hexes.geojson", is_live=is_live),
+        "hourly": load_json("hourly.json", is_live=is_live),
+        "city": load_json("city.json", is_live=is_live),
+        "personas": load_json("personas.json", is_live=is_live),
+        "advisory": load_json("advisory.json", is_live=is_live),
+        "insights": load_json("insights.json", is_live=is_live),
+    }
 
 # --------------------------------------------------------------------------
 # HISTORICAL ENDPOINTS (May 2010 Hindcast)

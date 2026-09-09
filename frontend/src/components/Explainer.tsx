@@ -25,7 +25,7 @@ export function Explainer({ data }: { data: HeatData }) {
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
           <span className="uppercase tracking-wider">
-            HEATSHIELD · EMERGENCY PUBLIC HEALTH INTELLIGENCE
+            HeatLens · Emergency public health intelligence
           </span>
         </div>
         <div className="flex items-center gap-3 text-[11px] font-semibold">
@@ -64,7 +64,7 @@ export function Explainer({ data }: { data: HeatData }) {
                 {data.meta.city} Heatwave Early Warning & Risk System
               </h2>
               <p className="text-[13px] leading-relaxed text-ink-soft font-medium">
-                Standard weather forecasts report shade air temperature. <strong className="text-ink font-bold">HEATSHIELD</strong> calculates actual human thermal stress across individual streets—integrating humidity, wind, solar radiation, and urban infrastructure.
+                Standard weather forecasts report shade air temperature. <strong className="text-ink font-bold">HeatLens</strong> calculates actual human thermal stress across individual streets—integrating humidity, wind, solar radiation, and urban infrastructure.
               </p>
             </div>
 
