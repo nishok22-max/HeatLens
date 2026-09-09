@@ -338,10 +338,11 @@ api/
 └── services/engine.py
 
 frontend/              React + TypeScript + Vite -> one self-contained index.html
-├── src/components/    HexMap · CellDetail · Drivers · NightRecovery ·
-│                      SafeWorkGrid · IndexComparison · AdvisoryPanel ·
-│                      CapExportModal · ProvenancePanel · Scenarios ·
-│                      UnifiedCommandCenter · AppShell · ui.tsx (statusTone)
+├── src/components/    AppShell · HexMap · CellDetail · ZonePicker · KpiRow ·
+│                      Drivers · Scenarios · ActionList · IndexComparison ·
+│                      NightRecovery · SafeWorkGrid · AdvisoryPanel ·
+│                      ProvenancePanel · Explainer · CityVisual · Info ·
+│                      ui.tsx (statusTone)
 └── src/               data.ts (the compiled-in payloads) · api.ts · types.ts ·
                        metrics.ts · plain.ts
 

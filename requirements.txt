@@ -21,6 +21,13 @@ thermofeel>=2.1
 # Deliberately NOT using geopandas/shapely: unnecessary here and painful on Windows.
 h3>=4.0
 
+# --- satellite (Phase 5B) ---
+# Earth Engine: Landsat 8/9 ST_B10 surface temperature, GHS-POP, GHS-BUILT-S.
+# Nothing imports this yet -- `sources/gee.py` arrives with Phase 5B. It was
+# pruned once as unused and is back on purpose; leave it while Phase 5 is open.
+# See docs/IMPLEMENTATION_PLAN.md section 5.
+earthengine-api>=0.1.390
+
 # --- api backend ---
 fastapi>=0.110.0
 uvicorn>=0.28.0

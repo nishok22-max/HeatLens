@@ -202,7 +202,7 @@ The work now in progress. Ordered so that **the highest-honesty work ships first
 | **5G** | **Chatbot** — a question-answering agent over the project's own documents and numbers, with a guard that stops it inventing figures. English text only for the first version | ~13 h | 5A–5F for its data |
 | **5H** | **Documentation.** This file, the PRD, the architecture doc, and a new `docs/DECISIONS.md` | 2–3 h | continuous |
 
-**Already done out of 5A** (in the honesty pass that produced this document): the false scipy claim corrected in `README.md` and in `physiology.py`, `solar.py`, `sources/osm.py`, `vulnerability.py`; the test count corrected everywhere including `docs/deck/build.py`; the product name unified to HeatLens across the API, `server.py` and the frontend; and a real bug fixed in the what-if scenario (§7.10).
+**Already done out of 5A** (in the honesty pass that produced this document): the false scipy claim corrected in `README.md` and in `physiology.py`, `solar.py`, `sources/osm.py`, `vulnerability.py`; the test count corrected everywhere including `docs/deck/build.py`; the product name unified to HeatLens across the API and the frontend (`server.py`, the second backend, has since been deleted -- `api/main.py` is the only one); and a real bug fixed in the what-if scenario (§7.10).
 **Still open in 5A:** the coverage report surfacing the buildings defect in code, extracting the go/no-go logic, and `tests/test_kill_gate.py`.
 
 **Minimum credible plan for a tight deadline: 5A → 5B → 5C → 5D → a trimmed 5H.** That is the satellite result, honestly stated, with the guard in place. 5E is the next best use of an hour; 5G is the biggest demo win but the largest block of time.
@@ -244,7 +244,7 @@ siting:                           # NEW
   n_centres: 12
 ```
 
-**No new dependencies for 5A–5F.** `earthengine-api` is already installed; the model is numpy plus the hex library. LightGBM is benchmarked in a throwaway environment and **not added** — the 6-hourly job installs dependencies on every run.
+**No new dependencies for 5A–5F.** `earthengine-api` is in `requirements.txt` for 5B (it was pruned once as unused and put back deliberately -- do not prune it again while Phase 5 is open); the model is numpy plus the hex library. LightGBM is benchmarked in a throwaway environment and **not added** — the 6-hourly job installs dependencies on every run.
 
 ### 5.3 Phase checks
 
