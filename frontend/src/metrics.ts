@@ -82,14 +82,9 @@ export const METRICS: Record<MetricKey, MetricDef> = {
 
 export const METRIC_ORDER: MetricKey[] = ["air_temp", "wbgt", "utci", "risk"];
 
-/** Evenly spaced stop values across a metric's fixed domain. */
-export function rampStops(metric: MetricDef): number[] {
-  const [lo, hi] = metric.domain;
-  return RAMP.map((_, i) => lo + ((hi - lo) * i) / (RAMP.length - 1));
-}
-
-/** Colour for a value, used by the legend and the cell detail chips.
- *  MapLibre does its own interpolation via the paint expression. */
+/** Colour for a value, used by the legend, the hex map and the cell detail
+ *  chips. The SVG map calls this per cell -- see HexMap.tsx for why there is no
+ *  MapLibre paint expression doing it instead. */
 export function colourFor(value: number, metric: MetricDef): string {
   const [lo, hi] = metric.domain;
   if (!Number.isFinite(value)) return "#cccccc";
@@ -102,29 +97,6 @@ export function inkOn(value: number, metric: MetricDef): string {
   const [lo, hi] = metric.domain;
   const t = Math.min(1, Math.max(0, (value - lo) / (hi - lo)));
   return t > 0.55 ? "#ffffff" : "#1b1a17";
-}
-
-/** Official UTCI thermal-stress band label. Mirrors thermal.utci_category in
- *  the Python core so the two never disagree on screen. */
-export function utciBand(value: number): string {
-  if (!Number.isFinite(value)) return "out of range";
-  if (value >= 46) return "extreme heat stress";
-  if (value >= 38) return "very strong heat stress";
-  if (value >= 32) return "strong heat stress";
-  if (value >= 26) return "moderate heat stress";
-  if (value >= 9) return "no thermal stress";
-  return "cold stress";
-}
-
-/** Coarse public-health WBGT band. Map colouring only — physiology.py is what
- *  actually answers "is this safe for this person". */
-export function wbgtBand(value: number): string {
-  if (!Number.isFinite(value)) return "no data";
-  if (value >= 35) return "extreme";
-  if (value >= 32) return "very high";
-  if (value >= 30) return "high";
-  if (value >= 28) return "moderate";
-  return "low";
 }
 
 export function formatValue(value: number, metric: MetricDef): string {
