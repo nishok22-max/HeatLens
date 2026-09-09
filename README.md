@@ -25,7 +25,7 @@ cd C:\Users\HP\sih-heat
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Expect **135 passed**. This is the credibility artefact — it validates the
+Expect **175 passed**. This is the credibility artefact — it validates the
 physics against published reference values (NOAA Heat Index chart, ISO 7243
 limits, Stull's own worked example) *and* cross-checks our from-scratch
 implementations against `thermofeel`, ECMWF's operational library.
@@ -60,7 +60,8 @@ interrupted or partially failed resumes and only retries the gaps.
 
 ## Outputs the frontend reads
 
-`web/data/` — 500 KB total, no server, no network:
+`web/data/` — 530 KB total, no server, no network. All seven are required:
+a missing one fails the frontend build and 404s the API.
 
 | file | size | contents |
 |---|---|---|
@@ -69,7 +70,8 @@ interrupted or partially failed resumes and only retries the gaps.
 | `city.json` | 11 KB | all 264 h city-mean + night-recovery series |
 | `personas.json` | 3 KB | safe-work windows per persona |
 | `advisory.json` | 3 KB | multilingual advisory + CAP 1.2 XML |
-| `meta.json` | 2 KB | provenance, kill-gate numbers, declared caveats |
+| `insights.json` | 3 KB | drivers, intervention scenarios, recommended actions |
+| `meta.json` | 4 KB | provenance, kill-gate numbers, declared caveats |
 
 Full spatial detail for one day; full temporal detail for the city aggregate.
 Shipping the cross product would be ~500k numbers.
@@ -83,7 +85,7 @@ H3 identifies a cell as `8842cc6821fffff`, which nobody can act on or discuss.
 city and labels each zone with its nearest one:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts_place_names.py confighmedabad.yaml
+.\.venv\Scripts\python.exe scripts\03_place_names.py config\ahmedabad.yaml
 ```
 
 Ahmedabad resolves to **75 distinct names** across 392 zones (Bodakdev,
@@ -161,6 +163,31 @@ a spinner; and when the API *is* reachable, the page silently upgrades to live
 numbers every five minutes. A failed refresh degrades to a small "not refreshing"
 badge beside the timestamp rather than to an error page — the data on screen is
 still the last good data.
+
+---
+
+## Backend API
+
+`api/main.py` (FastAPI) is **the** backend. There is no other one.
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --port 8000
+```
+
+| route | serves |
+|---|---|
+| `/api/health` | liveness probe + `live_refreshed_at`, which is what the UI badge reads |
+| `/api/v1/historical/{meta,map,hourly,summary,personas,advisory,insights}` | the May 2010 hindcast |
+| `/api/v1/forecast/...` | the live forecast, same seven routes |
+
+`/api/v1/live/...` is kept as an alias for `forecast`, because the UI calls the
+dataset "live" and the API namespaces it "forecast".
+
+**The frontend does not require it.** `frontend/src/data.ts` compiles the baked
+JSON into the bundle as the floor and `frontend/src/api.ts` upgrades to the API
+when `/api/health` answers; when it does not, the badge flips to "Offline Mode"
+and the bundled numbers stay on screen. Route names live in exactly one place
+(`fetchDataset` in `data.ts`) so the two cannot drift apart.
 
 ---
 
