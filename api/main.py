@@ -59,6 +59,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --------------------------------------------------------------------------
+# HEALTH
+# --------------------------------------------------------------------------
+
+def _city_name() -> str:
+    """City is config-driven (NFR-5), so the badge must not hardcode Ahmedabad."""
+    try:
+        import yaml
+        cfg = yaml.safe_load((ROOT / live.DEFAULT_CONFIG).read_text(encoding="utf-8"))
+        return (cfg.get("city") or {}).get("name", "unknown")
+    except Exception:
+        return "unknown"
+
+
+@app.get("/")
+@app.get("/api/health")
+def health():
+    """Liveness probe the frontend polls before it fetches a dataset.
+
+    `live_refreshed_at` separates "API up, still serving the baked floor" from
+    "API up and recomputing" -- which is the distinction the status badge in the
+    UI is actually claiming, and the one that was invisible before.
+    """
+    return {
+        "status": "ok",
+        "server": "HEATSHIELD Thermal Intelligence API",
+        "version": app.version,
+        "city": _city_name(),
+        "live_refreshed_at": (
+            live_cache["meta"]["generated_at_ist"] if live_cache else None
+        ),
+    }
+
+
 DATA_DIR = Path(__file__).parent.parent / "web" / "data"
 LIVE_DIR = DATA_DIR / "live"
 

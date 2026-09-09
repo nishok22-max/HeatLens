@@ -6,18 +6,20 @@ PyYAML>=6.0
 pytest>=8.0
 
 # --- thermal physics ---
-# pythermalcomfort: UTCI, PHS (ISO 7933), two-node Gagge
-pythermalcomfort>=2.8
-# thermofeel: ECMWF's own index library, used for cross-validation
+# thermofeel: ECMWF's own index library. Supplies Liljegren WBGT and the UTCI
+# polynomial, and cross-validates our from-scratch implementations.
+#
+# pythermalcomfort is deliberately NOT here. Windows Application Control blocks a
+# scipy.optimize DLL it depends on, so it cannot be imported on the target
+# machine; ISO 7933 PHS went with it and physiology.py uses ISO 7243 + ACGIH
+# work/rest tables instead. Listing it only made CI install a package no module
+# imports.
 thermofeel>=2.1
 
 # --- spatial ---
 # h3 alone gives cell tessellation + boundary polygons.
 # Deliberately NOT using geopandas/shapely: unnecessary here and painful on Windows.
 h3>=4.0
-
-# --- satellite (Day 1 PM; optional if WUDAPT LCZ fallback is used) ---
-earthengine-api>=0.1.390
 
 # --- api backend ---
 fastapi>=0.110.0

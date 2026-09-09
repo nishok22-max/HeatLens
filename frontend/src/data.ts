@@ -55,8 +55,13 @@ const ROUTE: Record<DatasetKey, string> = {
   live: "forecast",
 };
 
-const API_BASE: string =
-  import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
+/** Origin of the FastAPI backend (`uvicorn api.main:app`). One variable, because
+ *  there is one backend -- an earlier split across two names let the health probe
+ *  and the data fetch point at different servers without anything complaining. */
+export const API_ORIGIN: string =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+const API_BASE = `${API_ORIGIN}/api/v1`;
 
 export const BUNDLED: Record<DatasetKey, HeatData> = {
   historical: {
