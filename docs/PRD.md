@@ -82,13 +82,13 @@ Two findings from the real data changed how this problem should be framed:
 | ID | Requirement | Priority | Status |
 |---|---|---|---|
 | FR-1 | Compute WBGT (solar-corrected), UTCI and NOAA Heat Index from T, RH, wind, radiation | P0 `[P]` | ✅ Liljegren WBGT via `thermofeel` |
-| FR-2 | Validate every index against published reference values in automated tests | P0 `[P]` | ✅ 135 tests |
+| FR-2 | Validate every index against published reference values in automated tests | P0 `[P]` | ✅ 175 tests |
 | FR-3 | Partition the city into an H3 grid, each cell with a distinct thermal environment | P0 `[P]` | ✅ 392 cells, res 8 |
 | FR-4 | Report the intra-city spread statistic (the kill-gate metric) | P0 `[P]` | ✅ `05_kill_gate.py` |
 | FR-5 | Per-persona safe working minutes and strain ratio | P1 `[P]` | ✅ ISO 7243 + ACGIH |
 | FR-6 | Per-cell vulnerability weight | P1 `[P]` | ⚠️ Declared placeholder |
 | FR-7 | Relative risk as Hazard × Exposure × Vulnerability, labelled literature-derived | P1 `[P]` | ✅ uncalibrated by design |
-| FR-8 | Interactive map: layer toggle, 24-hour scrubber, cell detail | P0 `[P]` | ⬜ data baked, UI pending |
+| FR-8 | Interactive map: layer toggle, 24-hour scrubber, cell detail | P0 `[P]` | ✅ React UI, hand-rolled SVG hex map |
 | FR-9 | Advisory text in local languages + CAP 1.2 XML payload | P2 `[P]` | ✅ CAP valid; translations unverified |
 | FR-10 | Ingest NWP forecasts; probabilistic 5-day output | P0 `[V1]` | ⬜ |
 | FR-11 | Fit exposure–response via DLNM on real mortality / ER / ambulance records | P0 `[V1]` | ⬜ blocked on data access |

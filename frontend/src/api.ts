@@ -1,35 +1,52 @@
 import type { HeatData } from "./types";
 import type { DatasetKey } from "./data";
-import { DATASETS } from "./data";
+import { API_ORIGIN, DATASETS, fetchDataset } from "./data";
 
 /**
- * HEATSHIELD Frontend-to-Backend API Service Layer
- * Communicates with the Heatwave Early Warning & Thermal Stress API server.
+ * HEATSHIELD frontend-to-backend service layer.
+ *
+ * Speaks to the FastAPI app in `api/main.py` (`uvicorn api.main:app --port 8000`),
+ * which is the only backend: it owns the five-minute live refresh loop, so it is
+ * the only one whose Forecast numbers actually move.
+ *
+ * The transport lives in `data.ts` (`fetchDataset`) so the route names exist in
+ * exactly one place. This module adds the two things the UI needs on top of it:
+ * a liveness probe, and a fetch that degrades to the bundled floor instead of
+ * throwing.
  */
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+/** Re-exported from `data.ts`, which owns the single definition. */
+export const API_BASE_URL = API_ORIGIN;
 
 export interface BackendStatus {
   connected: boolean;
   serverName?: string;
   version?: string;
   city?: string;
+  /** IST timestamp of the last live recompute, or null if none has run yet. */
+  liveRefreshedAt?: string | null;
   lastChecked: string;
   error?: string;
 }
 
+/** Fetch with a deadline, so an unreachable API fails fast instead of hanging
+ *  the UI behind a TCP timeout on stage. */
+async function withTimeout(url: string, ms: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
- * Health check ping to verify backend connectivity on http://localhost:8000
+ * Health check ping to verify backend connectivity.
  */
 export async function checkBackendHealth(): Promise<BackendStatus> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    const res = await fetch(`${API_BASE_URL}/api/health`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    const res = await withTimeout(`${API_BASE_URL}/api/health`, 3000);
 
     if (res.ok) {
       const data = await res.json();
@@ -38,6 +55,7 @@ export async function checkBackendHealth(): Promise<BackendStatus> {
         serverName: data.server,
         version: data.version,
         city: data.city,
+        liveRefreshedAt: data.live_refreshed_at ?? null,
         lastChecked: new Date().toLocaleTimeString(),
       };
     }
@@ -57,29 +75,16 @@ export async function checkBackendHealth(): Promise<BackendStatus> {
 }
 
 /**
- * Fetch complete HeatData payload from backend REST API with demo fallback.
+ * Fetch a complete HeatData payload from the backend, falling back to the
+ * bundled copy. The fallback is not an error path: it is what NFR-1 (open the
+ * page from a USB stick, wifi off) requires, so a failure here downgrades the
+ * badge and nothing else.
  */
 export async function fetchHeatDataFromAPI(
   dataset: DatasetKey,
 ): Promise<{ data: HeatData; fromBackend: boolean; error?: string }> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-    const res = await fetch(`${API_BASE_URL}/api/heat-data?dataset=${dataset}`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const data: HeatData = await res.json();
-      return { data, fromBackend: true };
-    }
-    return {
-      data: DATASETS[dataset].data,
-      fromBackend: false,
-      error: `Backend HTTP ${res.status}`,
-    };
+    return { data: await fetchDataset(dataset), fromBackend: true };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : "Network error";
     return {
@@ -87,64 +92,5 @@ export async function fetchHeatDataFromAPI(
       fromBackend: false,
       error: errMsg,
     };
-  }
-}
-
-/**
- * Fetch specific ward detail metrics from backend REST API
- */
-export async function fetchWardDetailFromAPI(
-  h3Index: string,
-  hour: number,
-  dataset: DatasetKey,
-): Promise<any | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-    const res = await fetch(
-      `${API_BASE_URL}/api/ward-detail?h3=${encodeURIComponent(
-        h3Index,
-      )}&hour=${hour}&dataset=${dataset}`,
-      { signal: controller.signal },
-    );
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      return await res.json();
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Fetch intervention scenarios from backend REST API
- */
-export async function fetchScenariosFromAPI(dataset: DatasetKey): Promise<any | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/scenarios?dataset=${dataset}`);
-    if (res.ok) {
-      return await res.json();
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Fetch public advisory copy & CAP 1.2 XML payload from backend REST API
- */
-export async function fetchAdvisoryFromAPI(dataset: DatasetKey): Promise<any | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/advisory?dataset=${dataset}`);
-    if (res.ok) {
-      return await res.json();
-    }
-    return null;
-  } catch {
-    return null;
   }
 }
