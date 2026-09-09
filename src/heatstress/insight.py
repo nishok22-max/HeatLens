@@ -83,31 +83,63 @@ def driver_attribution(ta, rh, wind, ghi) -> list[dict]:
     ]
 
 
-def _unsafe_hours(wbgt_series, persona, working_hours) -> float:
-    """Person-hours of scheduled work that exceed the safe allowance."""
+def _unsafe_hours(wbgt_by_hour, persona, working_hours) -> tuple[float, int]:
+    """Person-hours of scheduled work that exceed the safe allowance.
+
+    ``wbgt_by_hour`` maps hour-of-day (0-23) -> WBGT. A scheduled hour with no
+    forecast is skipped rather than guessed, so the second return value says how
+    many hours actually carried data. That distinction matters at the edges of a
+    forecast window, where the first and last local dates are part-days.
+    """
     total = 0.0
+    scored = 0
     for hour in working_hours:
-        allowed = float(ph.safe_work_minutes_per_hour(wbgt_series[hour], persona))
+        wbgt = wbgt_by_hour.get(hour)
+        if wbgt is None:
+            continue
+        allowed = float(ph.safe_work_minutes_per_hour(wbgt, persona))
         total += (60.0 - allowed) / 60.0
-    return total
+        scored += 1
+    return total, scored
 
 
 DEFAULT_SHIFT = list(range(9, 18))          # 09:00-17:00, a conventional day
 SHIFTED = [6, 7, 8, 9, 10, 17, 18, 19, 20]  # early start, evening return
 
 
-def scenario_shift_hours(wbgt_series, personas=None) -> dict:
+def scenario_shift_hours(wbgt_series, personas=None, hours=None) -> dict:
     """Move outdoor work out of the worst hours. Costs nothing but scheduling.
 
     Fully determined by data we already have: the hourly safe-work allowance is
     computed from ISO 7243 and ACGIH, so moving the same nine hours of work to a
     different part of the day gives an exact answer, not an estimate.
+
+    ``hours`` gives the hour-of-day for each entry of ``wbgt_series``. Pass it
+    whenever the series might not be a full midnight-to-midnight day -- a live
+    forecast window is requested in UTC and read in local time, so its first and
+    last local dates are part-days. Omitting it assumes entry *i* is hour *i*,
+    which is exact for a complete day and wrong for anything else. Scheduled
+    hours with no data are excluded from both sides of the comparison, and
+    ``hours_scored`` reports how many were actually counted.
     """
     personas = personas or ["construction", "delivery"]
-    before = sum(_unsafe_hours(wbgt_series, ph.PERSONAS[k], DEFAULT_SHIFT)
-                 for k in personas)
-    after = sum(_unsafe_hours(wbgt_series, ph.PERSONAS[k], SHIFTED)
-                for k in personas)
+    if hours is None:
+        hours = range(len(wbgt_series))
+    by_hour = {int(h): float(w) for h, w in zip(hours, wbgt_series)}
+
+    before = after = 0.0
+    scored_before = scored_after = 0
+    for key in personas:
+        persona = ph.PERSONAS[key]
+        b, sb = _unsafe_hours(by_hour, persona, DEFAULT_SHIFT)
+        a, sa = _unsafe_hours(by_hour, persona, SHIFTED)
+        before += b
+        after += a
+        scored_before += sb
+        scored_after += sa
+
+    expected = len(personas) * (len(DEFAULT_SHIFT) + len(SHIFTED))
+    complete = (scored_before + scored_after) == expected
     return {
         "key": "shift_hours",
         "label": "Shift outdoor work hours",
@@ -117,7 +149,12 @@ def scenario_shift_hours(wbgt_series, personas=None) -> dict:
         "unsafe_after": round(after, 1),
         "reduction_pct": round(100.0 * (before - after) / before, 0) if before else 0.0,
         "modelled": True,
-        "basis": "Exact: recomputed from the ISO 7243 / ACGIH hourly allowance.",
+        "hours_scored": scored_before + scored_after,
+        "covers_full_shift": complete,
+        "basis": ("Exact: recomputed from the ISO 7243 / ACGIH hourly allowance."
+                  if complete else
+                  "Partial: the forecast window does not cover every scheduled "
+                  "hour, so uncovered hours are excluded from both sides."),
     }
 
 

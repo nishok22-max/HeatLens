@@ -62,7 +62,7 @@ export function AppShell({
           </span>
           <div>
             <span className="block text-[14px] font-black tracking-tight leading-none uppercase text-[#FAF8F5]">
-              HEATSHIELD
+              HeatLens
             </span>
             <span className="text-[9px] text-[#A3A099] font-medium leading-none">
               Public Health Intelligence
@@ -95,7 +95,7 @@ export function AppShell({
           <span className="min-w-0">
             <span className="flex items-center gap-1.5">
               <span className="block text-[16px] font-black tracking-tight leading-tight text-[#FAF8F5] uppercase">
-                HEATSHIELD
+                HeatLens
               </span>
               <span className="px-1.5 py-0.2 bg-teal/20 text-teal-soft text-[9px] font-extrabold rounded uppercase border border-teal/40">
                 SIH

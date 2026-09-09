@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from heatstress import insight as ins
 from heatstress import live
 from heatstress.sources import openmeteo as om
 
@@ -163,3 +164,61 @@ def test_nothing_monkeypatches_thermofeel():
     params = inspect.signature(thermofeel.calculate_wbgt_liljegren).parameters
     assert len(params) >= 7
     assert "cossza" in params
+
+
+class TestPartDayIsScoredByHourNotPosition:
+    """A forecast window's first and last local dates are part-days.
+
+    `insight.scenario_shift_hours` asks for specific clock hours (06:00-21:00).
+    It used to index the day series by list position, which silently assumed
+    position == hour-of-day. That holds for a complete midnight-to-midnight day
+    and fails for a part-day: every hour is mis-addressed, and a short tail
+    raised IndexError through `live.compute_live`. These cases pin the contract
+    against fixed inputs, so they do not pass or fail depending on the wall
+    clock the way the failure originally did.
+    """
+
+    def _flat_day(self, wbgt=32.0):
+        return [wbgt] * 24, list(range(24))
+
+    def test_a_part_day_does_not_raise(self):
+        """The original bug: a 14-hour tail, asked about hour 20."""
+        series = [32.0] * 14
+        hours = list(range(10, 24))
+        result = ins.scenario_shift_hours(series, hours=hours)
+        assert result["key"] == "shift_hours"
+
+    def test_a_part_day_reports_that_it_is_partial(self):
+        result = ins.scenario_shift_hours([32.0] * 14, hours=list(range(10, 24)))
+        assert result["covers_full_shift"] is False
+        assert "Partial" in result["basis"]
+
+    def test_a_complete_day_reports_that_it_is_exact(self):
+        series, hours = self._flat_day()
+        result = ins.scenario_shift_hours(series, hours=hours)
+        assert result["covers_full_shift"] is True
+        assert result["basis"].startswith("Exact")
+
+    def test_hours_are_addressed_by_clock_not_position(self):
+        """Hot afternoon, cool evening, offered only from 12:00.
+
+        Positional indexing would read entry 9 (21:00, cool) as "09:00" and get
+        a different answer. Clock addressing must score 09:00 as absent.
+        """
+        hours = list(range(12, 24))
+        series = [40.0 if h < 18 else 24.0 for h in hours]
+        result = ins.scenario_shift_hours(series, hours=hours)
+        positional = ins.scenario_shift_hours(series)
+        assert result["unsafe_before"] != positional["unsafe_before"]
+
+    def test_omitting_hours_still_matches_the_old_full_day_behaviour(self):
+        """The hindcast path passes no `hours`; its numbers must not move."""
+        series, hours = self._flat_day()
+        assert (ins.scenario_shift_hours(series)["unsafe_before"]
+                == ins.scenario_shift_hours(series, hours=hours)["unsafe_before"])
+
+    def test_uncovered_hours_are_excluded_from_both_sides(self):
+        """Not silently treated as safe, which would flatter the comparison."""
+        full, hours = self._flat_day(38.0)
+        partial = ins.scenario_shift_hours(full[:18], hours=hours[:18])
+        assert partial["hours_scored"] < ins.scenario_shift_hours(full, hours=hours)["hours_scored"]

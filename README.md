@@ -25,7 +25,7 @@ cd C:\Users\HP\sih-heat
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Expect **175 passed**. This is the credibility artefact — it validates the
+Expect **181 passed**. This is the credibility artefact — it validates the
 physics against published reference values (NOAA Heat Index chart, ISO 7243
 limits, Stull's own worked example) *and* cross-checks our from-scratch
 implementations against `thermofeel`, ECMWF's operational library.
@@ -267,8 +267,11 @@ CAP output is stamped `status=Exercise`, never `Actual`.
 
 - Python 3.12 venv at `.venv`. The system `python` on PATH is a different
   interpreter without pip — always use `.\.venv\Scripts\python.exe`.
-- **`pythermalcomfort` cannot be imported on this machine.** Windows Application
-  Control blocks a `scipy.optimize` DLL it depends on. This removed ISO 7933 PHS;
-  `physiology.py` uses ISO 7243 + ACGIH work/rest tables instead, which is a
-  lookup rather than a solver and is what occupational hygienists actually use.
+- **`physiology.py` uses ISO 7243 + ACGIH work/rest tables, not ISO 7933 PHS.**
+  An earlier note here claimed `pythermalcomfort` could not be imported because
+  Windows Application Control blocked a `scipy.optimize` DLL. That is no longer
+  true — `scipy 1.18.1`, `scipy.optimize` and `pythermalcomfort 4.4.2` all import
+  cleanly. The choice stands on its own merits: a lookup table has no solver to
+  fail mid-demo, and work/rest allowances are what occupational hygienists
+  actually sign off on.
 - `thermofeel` (ECMWF) works and supplies Liljegren WBGT and the UTCI polynomial.

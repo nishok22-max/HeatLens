@@ -1,221 +1,311 @@
 # Implementation Plan
-## Heat Stress Early Warning — build status and remaining work
+## HeatLens — what is built, and what is left
 
-**Repo:** `C:\Users\HP\sih-heat` · **Tests:** 135 passing · **Backend:** complete
-**Kill gate:** PROCEED (UTCI spread 3.88 °C on real Ahmedabad urban form)
+**Repo:** `C:\Users\HP\sih-heat` · **Tests:** **181 passing** · **Backend:** complete · **Frontend:** built · **Live forecast:** running
+**Go/no-go verdict:** PROCEED — heat-stress spread across the city is 3.88 °C against a 3.0 °C threshold, a margin of 0.88 °C
+**Name:** HeatLens. The Python package stays `heatstress` — see `ARCHITECTURE.md` §6 D18
+
+> **How to read this.** §0 is the scorecard against the competition requirements. §1–§4 are what exists today. §5 is the work now in progress. §6 is the path to production. §7 records the findings that changed the design — including the mistakes. Technical terms are defined in the glossary in `PRD.md` Part III.
 
 ---
 
-## 1. Strategy
+## 0 · Requirement coverage
 
-The prototype is **an experiment, not a small product.** It exists to answer one
-load-bearing question:
+**The problem statement comes first.** Its clauses are numbered PS-1 to PS-13 in `PRD.md` §1, which holds the authoritative status. This table is the build view: what is shipped, what is in progress, what is left.
 
-> Does meaningful intra-city thermal stress variation actually show up?
+| # | Problem statement clause | Built | What is left |
+|---|---|---|---|
+| PS-1 | Heat-stress index from temperature + humidity + wind + radiation | ✅ Phase 1 | — |
+| PS-2 | WBGT / UTCI / Heat Index, not temperature alone | ✅ Phase 1 — all three, each validated and cross-checked | — |
+| PS-3 | Automated **Mortality Risk Index** | ⚠️ Phase 3 — the index runs end to end, **uncalibrated by design** | Needs PS-4. Read `PRD.md` §3.1 before changing this |
+| PS-4 | Historical public health data | ⬜ | Institutional access (IHIP / 108 EMRI / CRS). The `calibrate()` connection point is built and tested |
+| PS-5 | Demographics — elderly / outdoor-worker density | ⚠️ Phase 3 placeholder → 🚧 Phase 5E adds total population | **Age breakdown still missing** — FR-6a: WorldPop age-sex data or Census 2011 ward tables |
+| PS-6 | Localized weather data | ✅ Phase 2 + Phase 4 | — |
+| PS-7 | Spikes **3–5 days ahead** | ✅ Phase 4 — **6-day horizon**, a day of margin over the requirement | Death counts blocked on PS-4; probability ranges are `[V1]` |
+| PS-8 | High-resolution, hyper-local (zone / ward) | ✅ Phase 2 — 392 zones at 0.693 km², named in Phase 3 | 🚧 Phase 5B–5D measures the pattern from satellite; ward roll-up is `[V1]` |
+| PS-9 | Dynamic colour-coded map dashboard | ✅ §4.1 | The wifi-off test is still unticked (§4.1 item 10) |
+| PS-10 | Actionable automated advisories | ✅ Phase 3 | Native-speaker review of the Hindi/Gujarati text (§4.3 item 2) |
+| PS-11 | **API** able to push SMS/WhatsApp alerts | ⚠️ Phase 4 — API built (26 routes), CAP message valid | **The send is deliberately switched off.** One connector behind an interface that exists. `PRD.md` §3.2 |
+| PS-12 | Triggers: cooling centres · power grid · work hours | ⚠️ Work hours ✅ Phase 1+3 | Cooling centres 🚧 Phase 5F; **power grid ⬜ not started** (FR-21); rules engine `[V1]` |
+| PS-13 | Serve municipal / health / disaster authorities | ✅ §4.1 | One phone call to a real health officer (§4.3 item 5) |
 
-Everything else — the map, an API, alerting — is known-outcome engineering that
-de-risks nothing. So the build terminates in a **kill gate** with pre-committed
-thresholds, decided before any UI work begins.
+**Score: 7 of 13 fully built, 5 partial, 1 not started.** Three of the five partials — the lead time, the API, and the work-hour trigger — are built and were simply undersold in earlier drafts. What is genuinely open reduces to **absolute death figures** (a data-access problem, `PRD.md` §3.1), **age-specific population** (a dataset swap, FR-6a), and **grid load** (FR-21, not started).
 
-| Spread | Verdict | Action |
+---
+
+## 1. The strategy: build something that could have failed
+
+This project is **an experiment, not a small product.** It exists to answer one load-bearing question:
+
+> Does heat stress actually vary meaningfully *within* a single city?
+
+If the answer were no, then "hyperlocal warnings" would be a false premise and no amount of good engineering would fix it. Everything else — the map, an API, alerting — is work whose outcome was never in doubt, so it de-risks nothing.
+
+So the build ends in a **go/no-go test with thresholds written down in advance**, before any screen was designed:
+
+| Spread measured | Verdict | What we would do |
 |---|---|---|
-| ≥ 3 °C | Thesis holds | Geography is the story; lead with the map |
-| 1.5–3 °C | Real but modest | Lead with humidity + physiology |
-| < 1.5 °C | Premise weak | Pivot to *same place, different bodies* |
+| 3 °C or more | The premise holds | Geography is the story; lead with the map |
+| 1.5–3 °C | Real but modest | Lead with humidity and physiology instead |
+| Under 1.5 °C | Premise is weak | Change direction: *same place, different bodies* |
 
-**Result: 3.88 °C on UTCI → PROCEED.** Robust across the entire literature
-amplitude range (2.57–6.53 °C), so the verdict does not depend on a flattering
-choice of parameter.
+**The result was 3.88 °C on UTCI → PROCEED.** It stays above the line across the entire plausible range from the published literature (2.57–6.53 °C), so the verdict does not depend on a flattering choice of parameter.
+
+That same discipline is now being applied a second time: **Phase 5 writes the fitted model's pass mark into the config file before the model is fitted** (`min_spatial_cv_r2: 0.25`), and honours it either way. A threshold set in advance is the only kind that means anything.
 
 ---
 
-## 2. What Was Built
+## 2. What was built
 
 ### Phase 0 — Environment
 | Task | Status | Note |
 |---|---|---|
-| Resolve repo location | ✅ | `D:\S I H 2 6 0 8 3` is read-only at NTFS level; relocated to `C:\Users\HP\sih-heat` |
-| Python 3.12 venv + dependencies | ✅ | `numpy`, `pandas`, `h3`, `thermofeel`, `requests`, `pyyaml`, `pytest` |
+| Find a workable repo location | ✅ | `D:\S I H 2 6 0 8 3` is read-only at the filesystem level; moved to `C:\Users\HP\sih-heat` |
+| Python 3.12 environment and dependencies | ✅ | `numpy`, `pandas`, `h3`, `thermofeel`, `requests`, `pyyaml`, `pytest`, `fastapi`, `uvicorn`, `earthengine-api` |
 
-### Phase 1 — Physics core
-| Task | Status | Validation |
+### Phase 1 — The physics core
+| Task | Status | How it was validated |
 |---|---|---|
-| `psychro.py` — Buck, Stull, dew point | ✅ | Buck within 0.017 % at 100 °C; Stull hits its published worked example exactly (20 °C/50 % → 13.70 °C) |
-| `solar.py` — NOAA position, Erbs split | ✅ | Declination checked at equinoxes/solstices; solar noon at Ahmedabad |
-| `thermal.py` — HI, WBGT, UTCI, MRT | ✅ | HI matches NOAA chart within 0.4 °F; our MRT vs thermofeel agree to **0.005 °C** |
-| `physiology.py` — ISO 7243 + ACGIH | ✅ | Limits and work-rest thresholds checked against published tables |
-| Test suite | ✅ | **135 tests** |
+| `psychro.py` — humidity maths | ✅ | Saturation vapour pressure within 0.017 % of steam tables at 100 °C; wet bulb hits its published worked example exactly (20 °C / 50 % → 13.70 °C) |
+| `solar.py` — sun position, direct/diffuse split | ✅ | Declination checked at equinoxes and solstices; solar noon checked for Ahmedabad |
+| `thermal.py` — Heat Index, WBGT, UTCI, radiant temperature | ✅ | Heat Index matches the NOAA chart within 0.4 °F; our radiant temperature and `thermofeel`'s agree to **0.005 °C** |
+| `physiology.py` — ISO 7243 + ACGIH | ✅ | Limits and work/rest thresholds checked against the published tables |
+| Test suite | ✅ | **181 tests** collected and passing |
 
-### Phase 2 — Data & spatial
+### Phase 2 — Data and geography
 | Task | Status | Note |
 |---|---|---|
-| `sources/openmeteo.py` | ✅ | ERA5 archive, disk-cached, wind unit asserted (`ms`, not the km/h default) |
-| `sources/osm.py` | ✅ | Overpass with tiling, backoff, endpoint rotation, per-tile caching, percentile scaling |
-| `spatial.py` — H3 + UHI offset | ✅ | 392 cells at res 8 over 289 km² |
-| Real Ahmedabad urban form | ✅ | All 32 tile-queries fetched |
+| `sources/openmeteo.py` | ✅ | Past archive and forecast, cached to disk, wind units asserted (m/s, not the km/h default) |
+| `sources/osm.py` | ✅ | Overpass client with tiling, backoff, endpoint rotation, per-tile caching and percentile scaling |
+| `spatial.py` — zone grid and heat offset | ✅ | 392 zones of 0.693 km² each; the bounding box is ~16.6 × 16.4 km ≈ 272 km², which the grid matches |
+| Real Ahmedabad city shape | ✅ | All 32 tile queries fetched. **Caveat: the buildings layer is 0 in every zone — see §7.8** |
 
-### Phase 3 — Risk & delivery
+### Phase 3 — Risk and delivery
 | Task | Status | Note |
 |---|---|---|
-| `vulnerability.py` | ✅ | Declared placeholder; interface is the deliverable |
-| `risk.py` | ✅ | Exposure-response machinery with `calibrate()` seam; uncalibrated by design |
-| `advisory.py` | ✅ | CAP 1.2 XML validates; `status=Exercise` |
-| Pipeline scripts 02/04/05/06 | ✅ | Full run in ~7 s cached |
-| Static web assets | ✅ | 500 KB, opens from `file://` offline |
+| `vulnerability.py` | ✅ | A declared placeholder; the interface is the real deliverable |
+| `risk.py` | ✅ | Dose-response machinery with a `calibrate()` connection point; uncalibrated by design |
+| `advisory.py` | ✅ | CAP 1.2 XML validates; every alert marked `Exercise` |
+| `insight.py` | ✅ | Cause attribution, three what-if scenarios, recommended actions, and an explicit list of what is deliberately not offered |
+| Pipeline scripts 02/04/05/06 | ✅ | A full run takes about 7 seconds when cached |
+| Static web files | ✅ | 7 files, ~520 KB, opens from a local file with no network |
+
+### Phase 4 — Live mode, API, automation and deploy `[L]`
+*Built and running. This section exists because it was previously undocumented here.*
+
+| Task | Status | Note |
+|---|---|---|
+| `live.py` — live forecast orchestration | ✅ | Refresh loop, freshness policy (refetch if older than 15 min), a lock so two processes cannot compute at once, **an atomic seven-file publish with the metadata file written last**, and the `PAYLOAD_FILES` contract. Largest module in the package at 26 KB |
+| `scripts/07_live.py`, `08_live_scheduler.py` | ✅ | A one-shot refresh and a local 5-minute scheduler. The scheduler and the API share `refresh_once` under a lock, so exactly one of them computes per cycle and the other reads what it wrote |
+| `api/main.py` — FastAPI | ✅ | Background refresh task; the cached payload is replaced in a single assignment, so a request always sees one complete payload rather than a mix of old and new; falls back to reading from disk |
+| Second data folder `web/data/live/` | ✅ | The same seven files as the historical folder. **Must be baked in the same pass as `web/data/`** or the two dataset tabs disagree — this happened once and is recorded in `live.py`'s docstring |
+| `.github/workflows/refresh-live.yml` | ✅ | Every 6 hours: run the tests → refresh the forecast → `npm ci && npm run build` → commit the new data → deploy to GitHub Pages. **The tests gate the publish**: if a reference value has drifted, nothing ships |
+| Offline guarantee preserved | ✅ | The job republishes; it does not make the page depend on a network. Data stays compiled into the bundle |
+
+**Two rules worth writing down.** The FastAPI service must never become something the demo depends on (`ARCHITECTURE.md` §6 D16), and Earth Engine must never initialise at import time, or the 6-hourly job fails when it runs the tests before anything else.
 
 ---
 
-## 3. Running It
+## 3. How to run it
 
 ```powershell
 cd C:\Users\HP\sih-heat
 
-.\.venv\Scripts\python.exe -m pytest                                    # 135 tests
+.\.venv\Scripts\python.exe -m pytest                                    # 181 tests
 
-.\.venv\Scripts\python.exe scripts\02_urban_form.py     config\ahmedabad.yaml
+.\.venv\Scripts\python.exe scripts\02_urban_form.py      config\ahmedabad.yaml
 .\.venv\Scripts\python.exe scripts\04_compute_indices.py config\ahmedabad.yaml
 .\.venv\Scripts\python.exe scripts\05_kill_gate.py       config\ahmedabad.yaml
 .\.venv\Scripts\python.exe scripts\06_bake_web.py        config\ahmedabad.yaml
+.\.venv\Scripts\python.exe scripts\07_live.py            config\ahmedabad.yaml
 ```
 
-Use `.\.venv\Scripts\python.exe`, never bare `python` — the interpreter on PATH
-is a different venv without the dependencies.
+Always use `.\.venv\Scripts\python.exe`, never bare `python` — the interpreter on PATH is a different environment without the dependencies.
 
-Step 02 is safe to re-run: every Overpass response is cached per tile, so an
-interrupted or partially failed run resumes and retries only the gaps. Cold run
-on a new city takes 30–60 min (Overpass rate limits); warm run is instant.
+Step 02 is safe to re-run. Every Overpass response is cached per tile, so an interrupted or partly failed run resumes and retries only the gaps. A cold run on a new city takes 30–60 minutes because of Overpass rate limits; a warm run is instant.
+
+**Re-baking data also requires `npm run build`** in `frontend/`, because the data is compiled into the page rather than fetched (§4.1).
 
 ---
 
-## 4. Remaining Work
+## 4. What is left in the existing scope
 
 ### 4.1 Frontend — BUILT
 
-React + TypeScript + Vite in `frontend/`; the production build is a single
-self-contained `index.html`.
+React + TypeScript + Vite in `frontend/`. The production build is a single self-contained `index.html` of about 1.7 MB with the data compiled in.
 
 | # | Component | Status |
 |---|---|---|
-| 1 | SVG hex choropleth, 4 layers, 24 h scrubber, zoom/pan, keyboard-navigable | done |
-| 2 | Cell detail — indices, urban-form drivers, per-persona verdict | done |
-| 3 | Index-disagreement panel (WBGT x0.46 vs UTCI x1.29) | done |
+| 1 | SVG zone map, 4 layers, 24-hour slider, zoom and pan, keyboard-navigable | done |
+| 2 | Zone detail — indices, city-shape causes, per-person verdict | done |
+| 3 | Index-disagreement panel (WBGT ×0.46 vs UTCI ×1.29) | done |
 | 4 | Night-recovery chart | done |
 | 5 | Safe-work-window grid | done |
-| 6 | Advisory + CAP payload, with unverified-translation badges | done |
+| 6 | Advisory and CAP payload, with unchecked-translation badges | done |
 | 7 | Provenance panel — 7 layers, 3 flagged as not measured | done |
-| 8 | **Open `dist/index.html` from `file://` with wifi off** | TODO — do before the pitch |
-| 9 | Screen-recorded backup video | TODO — live demos die |
+| 8 | What-if scenarios panel (shift hours · shade · greening) | done — deepened in Phase 5F |
+| 9 | Live / historical dataset switch | done |
+| 10 | **Open the built page from a local file with wifi off** | **TODO — still open. This is the NFR-1 and M4 proof. Do it before the pitch** |
+| 11 | Screen-recorded backup video | TODO — live demos die |
 
-**Three decisions worth knowing about:**
+**Two decisions worth knowing about** *(a third, the MapLibre removal, has been promoted to `ARCHITECTURE.md` §6 D17, because it is an architectural fact rather than a frontend note)*:
 
-- **MapLibre was removed.** v6 loads its parser in a web worker, and Chromium
-  refuses to construct a worker from a `file://` origin, so the map rendered
-  blank from disk. Replaced with hand-rolled SVG: 392 polygons is trivial
-  geometry, and it removed ~1.5 MB of bundle, the worker, a CSS-cascade bug, and
-  brought real keyboard accessibility and correct print output.
-- **Data is compiled into the bundle, not fetched.** `fetch()` and module-script
-  loading are both blocked from `file://`. So re-baking data now also requires
-  `npm run build`.
-- **The colour scale has an explicit mode switch.** A fixed domain is honest
-  across hours but flattens the city at peak; a per-hour domain reveals the
-  pattern but is not comparable between hours. Both ship, and the legend always
-  states which is active.
+- **The data is compiled into the bundle, not fetched.** Browsers block both `fetch()` and module scripts for pages opened from a local file. So re-baking data also requires `npm run build`. Anything Phase 5F adds must respect this — which is why the scenario sliders snap to a **pre-baked grid** instead of calling an API.
+- **The colour scale has an explicit mode switch.** A fixed range is honest across hours but flattens the city at peak; a per-hour range reveals the pattern but is not comparable between hours. Both ship, and the legend always states which one is active.
 
-### 4.2 Chennai — the humid counterpoint
+### 4.2 Chennai — the humid comparison, and a prediction we got wrong
 
-Ahmedabad 2010 was *dry* heat. **Live mode has since supplied a humid regime for
-the same city**, so Chennai is no longer needed to demonstrate the humid
-mechanism — it is now a portability demonstration only, and correspondingly lower
-priority. The pipeline is city-agnostic and normalisation is percentile-based, so
-it remains config plus a fetch:
+Ahmedabad 2010 was *dry* heat. **Live mode has since supplied a humid period for the same city**, so Chennai is no longer needed to demonstrate the humid case — it is now only a portability demonstration, and correspondingly lower priority. The pipeline is city-agnostic, so it remains a config file plus a download:
 
-| # | Task | Est. |
+| # | Task | Estimate |
 |---|---|---|
-| 1 | `config/chennai.yaml` — bbox, centre, humid heatwave dates | 20 min |
-| 2 | Run steps 02/04/05/06 (cold Overpass fetch dominates) | 30–60 min |
-| 3 | Verify WBGT/UTCI ordering **inverts** vs Ahmedabad — the payoff | 20 min |
+| 1 | `config/chennai.yaml` — bounding box, centre, humid heatwave dates | 20 min |
+| 2 | Run steps 02/04/05/06 (the cold Overpass download dominates) | 30–60 min |
+| 3 | Check that the WBGT/UTCI ordering **flips** compared with Ahmedabad | 20 min |
 
-**This prediction was made, tested, and turned out WRONG — which is a better
-result.** The live September forecast for Ahmedabad (63% mean humidity, 26-35 degC)
-was run through the same pipeline as the dry May 2010 event (14% humidity, 45 degC):
+**We made that prediction, tested it, and it was WRONG — which turned out to be a better result.** A live September forecast for Ahmedabad (63 % average humidity, 26–35 °C) was run through the same pipeline as the dry May 2010 event (14 % humidity, 45 °C):
 
-| | May 2010, dry | Sept 2026 forecast, humid |
+| | May 2010, dry | September forecast, humid |
 |---|---|---|
-| air spread | 3.00 degC | 3.00 degC |
-| WBGT spread | 1.39 degC (x0.46) | 1.38 degC (**x0.46**) |
-| UTCI spread | 3.88 degC (x1.29) | 3.98 degC (**x1.33**) |
+| air temperature spread | 3.00 °C | 3.00 °C |
+| WBGT spread | 1.39 °C (×0.46) | 1.38 °C (**×0.46**) |
+| UTCI spread | 3.88 °C (×1.29) | 3.98 °C (**×1.33**) |
 
-The damping ratio did **not** move with humidity. The mechanism is not
-humidity-dependent as predicted: it comes from holding vapour pressure constant
-while air temperature varies across cells, and the sub-linear wet-bulb response
-to that is roughly scale-invariant across this range.
+The shrinking effect **did not move with humidity**. So the mechanism is not humidity-dependent as we predicted. It comes from holding vapour pressure constant while temperature varies across zones, and the wet-bulb response to that is roughly the same across this whole range.
 
-**Why this is the better outcome:** "use UTCI, not WBGT, for the intra-city map"
-now holds in *both* regimes rather than being event-specific. A single-city
-observation became a general finding — and it is a finding we can show we
-predicted incorrectly and corrected, which is worth more than one we guessed
-right.
+**Why this is the better outcome:** "use UTCI, not WBGT, for the within-city map" now holds in *both* dry and humid conditions, rather than being specific to one event. A single-city observation became a general finding — and it is one we can show we predicted incorrectly and then corrected, which is worth more than a guess that happened to be right.
 
 ### 4.3 Before any pitch
 
 | # | Task | Why |
 |---|---|---|
-| 1 | **Native-speaker review of Hindi and Gujarati advisory copy** | Machine-composed; an early draft contained a Lao codepoint inside the Gujarati |
-| 2 | Verify the May 2010 casualty figure and HAP evaluation against primary sources | Judges check numbers |
-| 3 | Source real exposure–response coefficients, or present risk as strictly relative | Currently literature-shaped defaults |
-| 4 | Make one phone call to a municipal health officer — *"if you knew four days ahead, what would you do differently?"* | Answers R4; a killer quote; zero build cost |
+| 1 | **Open the built page from a local file with wifi off** | It is M4, it is NFR-1, and it is still unticked |
+| 2 | **Native-speaker review of the Hindi and Gujarati text** | Machine-composed; an early draft contained a Lao character inside the Gujarati |
+| 3 | Check the May 2010 death toll and the Heat Action Plan evaluation against original sources | Judges verify numbers |
+| 4 | Source real dose-response coefficients, or present risk as strictly relative | Currently published defaults |
+| 5 | Make one phone call to a municipal health officer — *"if you knew four days ahead, what would you do differently?"* | Answers R4, gives you a quotable line, costs nothing to build |
 
 ---
 
-## 5. Bridge to Production
+## 5. Phase 5 — satellite temperature, a fitted model, population, what-if 🚧
 
-The prototype was built so production is a **substitution, not a rewrite**.
+The work now in progress. Ordered so that **the highest-honesty work ships first and depends on no external service**: if Earth Engine fails, 5A still leaves the repository strictly more truthful than it was.
 
-| Prototype | Production | Seam already in place |
-|---|---|---|
-| Hindcast of one past event | 5-day probabilistic forecast | New source module; physics unchanged |
-| OSM urban form | Landsat LST + trained LightGBM residual | `spatial.UrbanFormSource` protocol |
-| Assumed 3 °C UHI amplitude | Fitted from LST, validated against stations | Amplitude already isolated in config |
-| H3 hexagons | Municipal ward boundaries | Aggregation is cell-agnostic |
-| Placeholder vulnerability | Census 2011 + NFHS-5 ward index | `vulnerability.VulnerabilitySource` protocol |
-| Literature exposure-response | DLNM fitted on IHIP / 108 / CRS records | `risk.ExposureResponse.calibrate()` |
-| Static GeoJSON | PostGIS + TimescaleDB + FastAPI | Data contract already frozen |
-| Rendered advisory | CAP → NDMA SACHET + SMS / WhatsApp / IVR | CAP emitter valid; dispatch deliberately unwired |
-| — | Indoor + night-time RC model by roof typology | Census roof-material tables |
-| — | HAP rules engine, cooling-centre optimiser, what-if planner | — |
+| Phase | Work | Estimate | Depends on |
+|---|---|---|---|
+| **5A** | **Truth in the repo, and a guard on the verdict.** Correct the false scipy claim everywhere, fix the test count, settle on one product name, surface the buildings-are-zero defect in code and in the output, pull the go/no-go logic out of `05_kill_gate.py` into a testable function, and add `tests/test_kill_gate.py` | 2–3 h | nothing |
+| **5B** | **Satellite export.** `sources/gee.py` + `scripts/01_satellite_lst.py`: Landsat 8/9 thermal band (plus greenness and built-up indices), population and built-surface, and a MODIS Aqua sanity check at the 15 coarse blocks. Output `data/processed/satellite_ahmedabad.json` (~80 KB, committed) | 3–5 h | 5A · Earth Engine |
+| **5C** | **The fitted model.** `downscale.py`: Ridge on 6 inputs, tested on held-out geographic blocks, 90 % conformal intervals, and four comparison baselines — including **the existing hand-chosen weights scored against the real satellite measurement**. `scripts/11_fit_downscaler.py` prints a metrics table ending in a verdict against the pass mark | 3–4 h | 5B |
+| **5D** | **Wire it in — the headline result.** `scripts/12_downscaled_offsets.py` writes a superset data file; a three-level file resolver; re-run 04→05→06→07; **re-bake both data folders**; regenerate the deck and case-study maps *inside this phase* | 2–3 h | 5C passing its own test |
+| **5E** | **Population exposure.** Add a population-backed vulnerability surface alongside — not replacing — the placeholder; split the provenance row in two; allow exactly one narrowly-defined, checkable population statistic and keep refusing the rest | 2–3 h | 5B |
+| **5F** | **Finish what-if.** Model-based greening, population-weighted outcomes, a **pre-baked** 48-row scenario grid so sliders work offline, and cooling-centre placement (`siting.py`, FR-15) | 2–3 h | 5C, 5E |
+| **5G** | **Chatbot** — a question-answering agent over the project's own documents and numbers, with a guard that stops it inventing figures. English text only for the first version | ~13 h | 5A–5F for its data |
+| **5H** | **Documentation.** This file, the PRD, the architecture doc, and a new `docs/DECISIONS.md` | 2–3 h | continuous |
 
-**Highest-value production item:** the indoor/night-time model. The Ahmedabad
-finding — six consecutive nights above 26.7 °C with no physiological recovery —
-is the strongest evidence in the whole project, and it is currently inferred from
-*outdoor* air temperature. Modelling indoor temperature by roof typology (tin,
-asbestos, RCC, tiled), which Census 2011 provides at ward level, would make it
-far stronger and is something essentially no competing team will attempt.
+**Already done out of 5A** (in the honesty pass that produced this document): the false scipy claim corrected in `README.md` and in `physiology.py`, `solar.py`, `sources/osm.py`, `vulnerability.py`; the test count corrected everywhere including `docs/deck/build.py`; the product name unified to HeatLens across the API, `server.py` and the frontend; and a real bug fixed in the what-if scenario (§7.10).
+**Still open in 5A:** the coverage report surfacing the buildings defect in code, extracting the go/no-go logic, and `tests/test_kill_gate.py`.
 
-**Longest lead time:** health-outcome data. Institutional requests should go out
-immediately regardless of build order — a rejection letter is still evidence of
-having pursued the real path rather than inventing numbers.
+**Minimum credible plan for a tight deadline: 5A → 5B → 5C → 5D → a trimmed 5H.** That is the satellite result, honestly stated, with the guard in place. 5E is the next best use of an hour; 5G is the biggest demo win but the largest block of time.
+
+### 5.1 Four rules this phase must not break
+
+1. **Guard before you change.** `tests/test_kill_gate.py` lands in 5A, *before* anything touches the temperature offset. The margin is 0.88 °C; without a test, a change to the offset could silently flip the project's own verdict.
+2. **The operational number comes from the *observation*, not the model's prediction.** Predictions pull toward the average, which would shrink the spread by roughly the square root of the fit quality — and that spread is exactly what the go/no-go test measures. The model fills gaps, supplies error bars, and powers the what-if simulator. (`ARCHITECTURE.md` §6 D14.)
+3. **The model's pass mark is honoured in both directions.** `min_spatial_cv_r2: 0.25` goes in the config before fitting. If the model misses it, 5D refuses to write, the existing method stays, and the number is published anyway.
+4. **The offline guarantee is untouchable.** No new network call at runtime, no reimplementation of the physics in TypeScript, scenario grids pre-baked rather than computed live, and the chat panel hides itself when the backend is unreachable.
+
+### 5.2 Config additions (`config/ahmedabad.yaml`)
+
+Three of these keys — `alpha`, `alpha_range` and `lst_composite` — **already exist in the file and are read by no code at all**: a complete satellite specification written and never connected. Phase 5 switches them on and adds the rest.
+
+```yaml
+urban_heat:
+  mode: lst                       # lst | osm_composite
+  alpha: 0.40                     # NOW LIVE (was dead config)
+  alpha_range: [0.30, 0.50]       # NOW LIVE -- the new sensitivity sweep
+  lst_composite:
+    years: [2023, 2024, 2025]
+    months: [4, 5]
+    max_cloud_cover_pct: 10
+    min_valid_px_per_cell: 200    # NEW  ~25% of the ~800 30 m pixels in a zone
+    min_scenes: 5                 # NEW  below this, abort the export
+  downscale:                      # NEW
+    features: [ndvi, ndbi, built_s, roads, green, water]
+    ridge_lambda_grid: [0.01, 0.1, 1.0, 10.0, 100.0]
+    cv_group_resolution: 6        # 15 groups on the real grid, sizes 2-49
+    cv_folds: 5
+    conformal_alpha: 0.10
+    min_spatial_cv_r2: 0.25       # the pass mark, declared BEFORE fitting
+population:                       # NEW
+  source: JRC/GHSL/P2023A/GHS_POP
+  epoch: 2020
+siting:                           # NEW
+  walk_rings: 1                   # 7 zones, about 0.9 km — a short walk in extreme heat
+  n_centres: 12
+```
+
+**No new dependencies for 5A–5F.** `earthengine-api` is already installed; the model is numpy plus the hex library. LightGBM is benchmarked in a throwaway environment and **not added** — the 6-hourly job installs dependencies on every run.
+
+### 5.3 Phase checks
+
+| Phase | What must be true before moving on |
+|---|---|
+| 5A | Tests green; `tests/test_kill_gate.py` passes against the *committed* stored arrays before any change to the offset |
+| 5B | `01_satellite_lst.py` writes its output with at least 5 usable scenes and 90 % zone coverage; **re-running it makes zero network calls** |
+| 5C | The metrics table prints; held-out score at least 0.25; error bars contain the truth within 5 points of 90 %; the naive-versus-honest gap reported; the hand-weighted baseline number recorded |
+| 5D | 04→05→06→07 re-runs clean; verdict still PROCEED (or the failure reported with **both** methods shown); both data folders re-baked; `npm run build` succeeds; **the built page opened from disk with wifi off renders the full dashboard** |
+| 5E | Provenance has 8 rows; the vulnerability row still says `NOT FITTED`; the placeholder still reports `is_placeholder=True`; the population statistic refuses to run without a stated threshold |
+| 5F | Siting coverage never decreases as you add centres; zero centres covers zero people; enough centres covers everyone; the sliders work offline |
+| 5G | A grounded answer with a visible trace of which numbers it used; "how many people are at risk?" returns the *narrowed* statistic with its caveat, not the old blanket refusal and not a casualty figure; "is this validated?" returns "cross-checked against held-out satellite measurements" and never "validated" |
+| 5H | No file claims scipy is blocked; no file says 135 tests; one product name; `docs/DECISIONS.md` records D2 as **superseded**, not deleted |
+
+The suite is expected to grow from 181 to roughly 200 (5A +4, 5C +5, 5E +4, 5F +3, plus the vocabulary test).
 
 ---
 
-## 6. Key Findings from the Build
+## 6. The path to production
 
-Recorded because they changed the design, and because several are presentable
-results in their own right.
+The prototype was built so that production is a **substitution, not a rewrite**.
 
-1. **May 2010 Ahmedabad was dry heat (13–16 % RH).** Humidity was not the killer.
-   The correct thesis is that temperature alone misleads *in both directions*.
-2. **The nights were the killer.** Six consecutive nights with no drop below
-   26.7 °C; midnight UTCI of 33.1 °C. Daytime-maximum warnings are blind to this.
-3. **WBGT damps intra-city variation (×0.46); UTCI amplifies it (×1.29).** A hotter
-   cell is a drier cell. Index choice is event-dependent.
-4. **An outdoor construction worker had zero full-capacity working hours** on
-   21 May 2010, with **eight** consecutive hours (10:00-17:00 IST) at zero safe
-   minutes for every persona. Earlier notes said nine; the computed value is
-   eight, because at 18:00 a delivery rider regains 15 min/hour. Directly actionable, from published occupational standards.
-5. **Application Control blocks `scipy.optimize`**, which removed PHS — but
-   `thermofeel` supplies the full Liljegren WBGT model, a net upgrade that retired
-   the psychrometric-wet-bulb approximation entirely.
-6. **Fixed-cap normalisation flattened the city** (median intensity 0.975) until
-   replaced with percentile scaling — which also makes the pipeline portable.
-7. **Overpass rejects the default `python-requests` user agent with HTTP 406**,
-   and request count rather than payload dominates its cost.
+| Prototype | Production | The plug-in point | Status |
+|---|---|---|---|
+| Replay of one past event | A live forecast | New source module; physics unchanged | ✅ **built** (Phase 4) |
+| Static files only | A FastAPI service alongside them | The data contract is already frozen | ✅ **built** (Phase 4) — database still future |
+| Notebook-grade UI | React dashboard, one offline-capable file | — | ✅ **built** |
+| OpenStreetMap city shape | Satellite temperature plus a fitted model | `spatial.UrbanFormSource` interface | 🚧 Phase 5B–5D |
+| An assumed 3 °C | A measured pattern and one assumed number (`alpha`) | The figure is already isolated in config | 🚧 Phase 5D |
+| Placeholder exposure | Real residential population | `vulnerability.VulnerabilitySource` interface | 🚧 Phase 5E |
+| — | Cooling-centre placement / what-if planner | `insight.py` scenarios already in place | 🚧 Phase 5F |
+| One forecast | A **range** of possible outcomes | Same source module | ⬜ `[V1]` |
+| Placeholder vulnerability | Census 2011 + NFHS-5 ward index | `vulnerability.VulnerabilitySource` interface | ⬜ `[V1]` |
+| Age-blind population | **Elderly density per zone** (FR-6a, PS-5) | WorldPop age-sex data or Census ward age tables; same percentile scaling | ⬜ `[V1]` |
+| Published dose-response | Fitted on real health records | `risk.ExposureResponse.calibrate()` | ⬜ `[V1]` — **not attempted; no data** |
+| Equal-area zones | Official ward boundaries | The grouping code is boundary-agnostic | ⬜ `[V1]` |
+| Rendered advisory | CAP → NDMA SACHET + SMS / WhatsApp / voice | The CAP message is valid; sending deliberately unwired | ⬜ `[V1]` |
+| — | **Zone-level grid load** (FR-21, PS-12) | Cooling-load proxy over the forecast; no plug-in point yet | ⬜ `[V1]` — **not started** |
+| — | Indoor and night-time model by roof type | Census roof-material tables | ⬜ `[V1]` |
+| — | Heat action rules engine | — | ⬜ `[V1]` |
+
+**The highest-value remaining production item is the indoor/night-time model.** The Ahmedabad finding — six consecutive nights above 26.7 °C with no chance for a body to recover — is the strongest evidence in the whole project, and it is currently inferred from *outdoor* air temperature. Modelling indoor temperature by roof material (tin, asbestos, concrete, tiled), which Census 2011 provides at ward level, would make it far stronger, and it is something essentially no competing team will attempt.
+
+**The longest lead time is health-outcome data.** Institutional requests should go out immediately regardless of build order. Even a rejection letter is evidence of having pursued the real path instead of inventing numbers.
+
+---
+
+## 7. What we learned while building
+
+Recorded because each of these changed the design, and several are presentable results in their own right.
+
+1. **May 2010 Ahmedabad was dry heat, at 13–16 % humidity.** Humidity was not the killer there. The correct thesis is that temperature alone misleads *in both directions*.
+2. **The nights were the killer.** Six consecutive nights with no drop below 26.7 °C, and UTCI still at 33.1 °C at midnight. Daytime-maximum warnings cannot see this at all.
+3. **WBGT shrinks within-city variation (×0.46); UTCI magnifies it (×1.29).** A hotter zone is a drier zone. Later shown in §4.2 to be **independent of humidity**, which turned an event-specific recommendation into a general one.
+4. **An outdoor construction worker had zero full-capacity working hours** on 21 May 2010, with **eight** consecutive hours (10:00–17:00) at zero safe minutes for every person type. Earlier notes said nine; the computed value is eight, because at 18:00 a delivery rider regains 15 minutes per hour. Directly actionable, straight from published occupational standards.
+5. **CORRECTED — the scipy claim was false, and has now been fixed everywhere.** An earlier finding recorded that Windows Application Control blocked `scipy.optimize`, which removed the ISO 7933 model. On this machine **`scipy 1.18.1`, `scipy.optimize` and `pythermalcomfort 4.4.2` all import cleanly** (as do `earthengine-api 1.7.41` and `h3 4.5.0`; `sklearn`, `lightgbm` and `statsmodels` are simply not installed, not blocked). The claim had spread to seven places across the source and docs; all seven are now corrected. In `sources/osm.py` and `vulnerability.py` it was also the stated *reason* for avoiding heavyweight geospatial libraries, so the reason was **replaced** rather than deleted — Phase 5 avoids those libraries anyway, by averaging on Google's servers and fetching only numbers.
+   **The `thermofeel` choice itself was right on its own merits** — it ships the full Liljegren WBGT model, which retired the simpler wet-bulb approximation entirely. Only the reason was wrong.
+6. **Fixed-cap scaling flattened the city** (median score 0.975) until it was replaced with percentile scaling — which also makes the pipeline portable to another city.
+7. **Overpass rejects the default `python-requests` user agent with HTTP 406**, and the number of requests rather than their size dominates its cost.
+8. **The buildings layer is 0.0 in all 392 zones, so the city-shape score is road density.** The formula weights `0.55·buildings + 0.25·roads − 0.30·greenery − 0.20·water`, but buildings were switched off, so the **largest weight in the project's core formula contributes nothing**. Measured on the shipped data: correlation with roads +0.855, with water −0.778, with greenery −0.286, and greenery is non-zero in only 175 of 392 zones (mean 0.023). A layer with no coverage contributes nothing regardless of its weight — which is now to be stated in the formula's own docstring and surfaced by a coverage report. **This is the strongest single argument for measuring the pattern from satellite**, and the reason `ARCHITECTURE.md` D2 is marked superseded rather than quietly rewritten.
+9. **The effective sample size is about 20–25, not 392.** The city is roughly 16 × 16 km and surface temperature stays similar over 1–3 km. Independently, grouping zones by parent hexagon gives exactly **15 groups** on this grid (sizes 2, 2, 3, 5, 15, 18, 20, 23, 24, 42, 42, 49, 49, 49, 49 — badly unbalanced, which the fold builder must handle). That number, not 392, governs how many parameters may honestly be fitted, and it is why Phase 5C chooses Ridge over boosted trees.
+10. **FIXED — a real bug in the what-if simulator, found by running the tests on a stale cache.** `insight.scenario_shift_hours` asks about specific clock hours (06:00–21:00) but indexed the day's data **by list position**, silently assuming position equals hour of day. That holds for a complete midnight-to-midnight day and fails for a part-day — and a forecast window requested in UTC and read in local time has a part-day at each end. The symptom was an `IndexError` that crashed the whole live computation, and it only appeared when the committed forecast cache had aged relative to the clock. Because the 6-hourly job runs the tests *before* refreshing, a stale cache there would mean nothing publishes.
+    The fix makes the function **address data by clock hour**, skip scheduled hours with no forecast rather than guessing them, and report `hours_scored` and `covers_full_shift` so a partial comparison declares itself. Six tests now pin this against fixed inputs, so they cannot pass or fail depending on the day they run — which is exactly how the original failure hid. The historical numbers are unchanged: 17.8 → 11.0 unsafe person-hours, a 38 % reduction.
+11. **The go/no-go test was printed to the screen and never tested**, at a margin of 0.88 °C. The project's own verdict was unguarded. Extracting it into a testable function is the first remaining task of Phase 5, deliberately ordered before anything that changes the temperature offset.

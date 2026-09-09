@@ -83,7 +83,7 @@ def slide1(s):
            "tell you what that heat does to a person.", 12, italic=True,
         color=SLATE)
     p = para(tf, space_before=5, line=1.12)
-    run(p, "Prototype: 392 neighbourhoods · 135 passing physics tests · "
+    run(p, "Prototype: 392 neighbourhoods · 175 passing physics tests · "
            "runs offline", 11, bold=True, color=CRIMSON)
 
 
@@ -164,7 +164,7 @@ def slide3(s):
         ("WEATHER", "Open-Meteo ERA5 archive + forecast"),
         ("FRONTEND", "React 18 · TypeScript · Vite · SVG map"),
         ("DELIVERY", "one inlined index.html · CAP 1.2 XML"),
-        ("QUALITY", "pytest ×135 · GitHub Actions, 6-hourly"),
+        ("QUALITY", "pytest ×175 · GitHub Actions, 6-hourly"),
     ]
     cw, gp, ch = 3.02, 0.135, 0.31
     for i, (lab, value) in enumerate(stack):
