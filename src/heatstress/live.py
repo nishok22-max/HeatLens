@@ -353,10 +353,12 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
     future = [i for i, s in enumerate(stamps) if s >= now_key] or list(range(len(stamps)))
 
     # The window is requested in UTC and shifted to IST, so its first and last
-    # IST dates are part-days. Downstream, insight.scenario_shift_hours indexes
-    # the focus day BY HOUR (it asks for 06:00-21:00), so a part-day would both
-    # mis-address every hour and raise IndexError on the short tail. Prefer a
-    # complete day; fall back only if the window somehow has none.
+    # IST dates are part-days. Prefer a complete day, because a full
+    # midnight-to-midnight series is what the day charts and the work-shift
+    # comparison are meaningful over. The fallback below may still hand back a
+    # part-day, which is why day hours are passed explicitly to
+    # insight.scenario_shift_hours rather than relied on to equal list positions
+    # -- that assumption used to raise IndexError on the short tail.
     by_day: dict[str, list[int]] = {}
     for i, s in enumerate(stamps):
         by_day.setdefault(s[:10], []).append(i)
@@ -544,12 +546,13 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
     focus_ghi = np.full_like(focus_ta, float(weather["shortwave_radiation"].iloc[focus_idx]))
     day_series = [float(v) for v in wbgt[day_idx].mean(axis=1)]
     day_labels = [stamps[i][11:16] for i in day_idx]
+    day_hours = [int(stamps[i][11:13]) for i in day_idx]
 
     insights_data = {
         "date": focus_day,
         "drivers": ins.driver_attribution(focus_ta, focus_rh, focus_wind, focus_ghi),
         "scenarios": [
-            ins.scenario_shift_hours(day_series),
+            ins.scenario_shift_hours(day_series, hours=day_hours),
             ins.scenario_shade(focus_ta, focus_rh, focus_wind, focus_ghi),
             ins.scenario_greening(focus_ta, focus_rh, focus_wind, focus_ghi,
                                   intensity, uhi["uhi_amplitude_c"]),

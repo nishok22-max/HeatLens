@@ -3,7 +3,7 @@ import type { DatasetKey } from "./data";
 import { API_ORIGIN, DATASETS, fetchDataset } from "./data";
 
 /**
- * HEATSHIELD frontend-to-backend service layer.
+ * HeatLens frontend-to-backend service layer.
  *
  * Speaks to the FastAPI app in `api/main.py` (`uvicorn api.main:app --port 8000`),
  * which is the only backend: it owns the five-minute live refresh loop, so it is
