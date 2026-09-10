@@ -288,7 +288,7 @@ These are properties of the product, not bugs. They must be visible on screen an
 
 ## 13. Out of scope for the prototype
 
-Statistical mortality modelling · probability ranges instead of a single forecast · real alert sending · a database · user accounts · multiple cities at launch · the full rules engine · the indoor temperature model · gradient-boosted or random-forest models (see M5 and the sample-size argument in `ARCHITECTURE.md` §6 D12) · optimisation solvers for siting · road-network travel times · error bars that vary from zone to zone.
+Statistical mortality modelling · probability ranges instead of a single forecast · real alert sending · a database · user accounts · multiple cities at launch · the full rules engine · the indoor temperature model · gradient-boosted or random-forest models (see M5 and the sample-size argument in [`DECISIONS.md`](DECISIONS.md) D12) · optimisation solvers for siting · road-network travel times · error bars that vary from zone to zone.
 
 *Moved out of this list into `[P5]`:* the fitted model (FR-17) and the siting planner (FR-15).
 *Newly scoped instead of silently dropped:* elderly density (FR-6a), grid load (FR-21), ward roll-up (FR-22).
