@@ -3,7 +3,7 @@
 
 **Repo:** `C:\Users\HP\sih-heat` · **Tests:** **181 passing** · **Backend:** complete · **Frontend:** built · **Live forecast:** running
 **Go/no-go verdict:** PROCEED — heat-stress spread across the city is 3.88 °C against a 3.0 °C threshold, a margin of 0.88 °C
-**Name:** HeatLens. The Python package stays `heatstress` — see `ARCHITECTURE.md` §6 D18
+**Name:** HeatLens. The Python package stays `heatstress` — see [`DECISIONS.md`](DECISIONS.md) D18
 
 > **How to read this.** §0 is the scorecard against the competition requirements. §1–§4 are what exists today. §5 is the work now in progress. §6 is the path to production. §7 records the findings that changed the design — including the mistakes. Technical terms are defined in the glossary in `PRD.md` Part III.
 
@@ -102,7 +102,7 @@ That same discipline is now being applied a second time: **Phase 5 writes the fi
 | `.github/workflows/refresh-live.yml` | ✅ | Every 6 hours: run the tests → refresh the forecast → `npm ci && npm run build` → commit the new data → deploy to GitHub Pages. **The tests gate the publish**: if a reference value has drifted, nothing ships |
 | Offline guarantee preserved | ✅ | The job republishes; it does not make the page depend on a network. Data stays compiled into the bundle |
 
-**Two rules worth writing down.** The FastAPI service must never become something the demo depends on (`ARCHITECTURE.md` §6 D16), and Earth Engine must never initialise at import time, or the 6-hourly job fails when it runs the tests before anything else.
+**Two rules worth writing down.** The FastAPI service must never become something the demo depends on ([`DECISIONS.md`](DECISIONS.md) D16), and Earth Engine must never initialise at import time, or the 6-hourly job fails when it runs the tests before anything else.
 
 ---
 
@@ -148,7 +148,7 @@ React + TypeScript + Vite in `frontend/`. The production build is a single self-
 | 10 | **Open the built page from a local file with wifi off** | **TODO — still open. This is the NFR-1 and M4 proof. Do it before the pitch** |
 | 11 | Screen-recorded backup video | TODO — live demos die |
 
-**Two decisions worth knowing about** *(a third, the MapLibre removal, has been promoted to `ARCHITECTURE.md` §6 D17, because it is an architectural fact rather than a frontend note)*:
+**Two decisions worth knowing about** *(a third, the MapLibre removal, has been promoted to [`DECISIONS.md`](DECISIONS.md) D17, because it is an architectural fact rather than a frontend note)*:
 
 - **The data is compiled into the bundle, not fetched.** Browsers block both `fetch()` and module scripts for pages opened from a local file. So re-baking data also requires `npm run build`. Anything Phase 5F adds must respect this — which is why the scenario sliders snap to a **pre-baked grid** instead of calling an API.
 - **The colour scale has an explicit mode switch.** A fixed range is honest across hours but flattens the city at peak; a per-hour range reveals the pattern but is not comparable between hours. Both ship, and the legend always states which one is active.
@@ -210,7 +210,7 @@ The work now in progress. Ordered so that **the highest-honesty work ships first
 ### 5.1 Four rules this phase must not break
 
 1. **Guard before you change.** `tests/test_kill_gate.py` lands in 5A, *before* anything touches the temperature offset. The margin is 0.88 °C; without a test, a change to the offset could silently flip the project's own verdict.
-2. **The operational number comes from the *observation*, not the model's prediction.** Predictions pull toward the average, which would shrink the spread by roughly the square root of the fit quality — and that spread is exactly what the go/no-go test measures. The model fills gaps, supplies error bars, and powers the what-if simulator. (`ARCHITECTURE.md` §6 D14.)
+2. **The operational number comes from the *observation*, not the model's prediction.** Predictions pull toward the average, which would shrink the spread by roughly the square root of the fit quality — and that spread is exactly what the go/no-go test measures. The model fills gaps, supplies error bars, and powers the what-if simulator. ([`DECISIONS.md`](DECISIONS.md) D14.)
 3. **The model's pass mark is honoured in both directions.** `min_spatial_cv_r2: 0.25` goes in the config before fitting. If the model misses it, 5D refuses to write, the existing method stays, and the number is published anyway.
 4. **The offline guarantee is untouchable.** No new network call at runtime, no reimplementation of the physics in TypeScript, scenario grids pre-baked rather than computed live, and the chat panel hides itself when the backend is unreachable.
 
