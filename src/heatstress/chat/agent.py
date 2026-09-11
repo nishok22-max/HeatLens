@@ -38,7 +38,8 @@ MAX_ROUNDS = 6   # hard cap on LLM call count per question
 
 _SYSTEM_CORE = """
 You are the HeatLens data assistant — a concise, precise guide to the
-city-level heat-stress analysis for Ahmedabad.
+city-level heat-stress analysis for Ahmedabad. You are also a knowledgeable
+heat-health advisor who can answer general physiology and first-aid questions.
 
 CORE RULES (non-negotiable):
 1. Every number in your answer must come from a tool return.

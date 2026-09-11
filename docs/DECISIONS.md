@@ -167,3 +167,43 @@ Six names were in circulation (HeatLens, HEATSHIELD, Hydra, Heatblast, HeatTwin,
 A model that can state a number it was never given will eventually state a wrong one, and this project's entire claim is that its numbers are checkable. So every figure in an answer must come back from a tool call over the baked payloads; a numeric guard rejects any that did not; a refusal table covers what the data cannot honestly answer; and advisory copy is substituted verbatim, because a reworded public-health instruction is a new instruction nobody approved. Retrieval runs locally on a ~30 MB static embedding model, so no corpus and no question leaves the machine. NFR-1 outranks the feature: when `/api/health` does not answer the panel hides rather than degrading into a chat box that cannot cite anything. Full design in `IMPLEMENTATION_PLAN.md` §5.4.
 
 ---
+
+## D20 — Ship the measured pattern on MODIS at 1 km now, rather than wait for Landsat at 30 m
+
+**Status:** Accepted  ·  **Recorded:** 2026-09-11 (satellite + what-if)
+
+Earth Engine needs a one-off browser sign-in and a Cloud project — a step no script can perform. The alternative to a coarse measurement was not a fine measurement, it was **an indefinite continuation of the guess**, and §2.3 shows the guess correlates 0.197 with reality. ORNL DAAC serves MODIS LST as JSON with no registration, no key and no wait, which is the same reasoning as D2 applied to thermal imagery. The cost is stated in the data itself: 295 distinct pixels behind 392 zones, `zones_per_pixel` and `native_resolution_m` carried in every export. `sources/gee.py` and `--source gee` stay tested and one flag away.
+
+---
+
+## D21 — Sample the containing pixel; never interpolate between them
+
+**Status:** Accepted  ·  **Recorded:** 2026-09-11 (satellite + what-if)
+
+At 926 m the pixel is about the size of a 0.69 km² zone, so bilinear smoothing would manufacture sub-pixel detail the instrument never resolved — a plausible-looking invented pattern, which is the exact failure this project exists to avoid. Neighbouring zones therefore share values and the map is honestly blocky. A test pins it.
+
+---
+
+## D22 — Aqua as the source, Terra as the referee
+
+**Status:** Accepted  ·  **Recorded:** 2026-09-11 (satellite + what-if)
+
+Aqua crosses at 13:30, within half an hour of the 14:00 IST focus hour the kill gate is scored on; Terra crosses at 10:30, before the afternoon peak. Using the better-timed instrument for the number and the other for an independent rank check turns a spare data source into a falsification test — they agree at **0.946** over the 15 coarse blocks.
+
+---
+
+## D23 — The what-if box parses; it never generates
+
+**Status:** Accepted  ·  **Recorded:** 2026-09-11 (satellite + what-if)
+
+A free-text surface is the easiest place in this project to destroy its own credibility, because generated prose sitting where a traceable number belongs is indistinguishable from a traceable number. So the box maps English onto the levers the physics already models, looks the answer up in a grid computed during the bake, and refuses everything else. The rules are authored and tested in `whatif.py`, compiled into `insights.json`, and matched by ~150 lines of TypeScript that cannot compute anything. Refusals reuse the `omitted` reasons already on screen rather than new copy, so there is one wording to keep true.
+
+---
+
+## D24 — Pre-baked grid, not an API call — so the simulator survives the wifi being off
+
+**Status:** Accepted  ·  **Recorded:** 2026-09-11 (satellite + what-if)
+
+Rule 4 of Phase 5 forbids new runtime network calls and physics in TypeScript, and NFR-1 requires the page to work from disk. Both point the same way: run all 44 combinations during the bake and ship the answers as data. Verified with the backend killed — the badge reads OFFLINE and the box still answers. The cost is that only grid points can be asked for; off-grid values snap to the nearest row and the UI says so, rather than interpolating (D21).
+
+---
