@@ -9,6 +9,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from heatstress import live  # noqa: E402
+from api import chat as chat_module  # noqa: E402
 
 # In-memory cache for the live forecast. Rebound in a single assignment, so a
 # request sees either the whole old payload or the whole new one -- unlike the
@@ -34,6 +35,7 @@ async def refresh_forecast_loop():
                 freshness_floor=min(interval / 2, 60.0),
             )
             live_cache = result.payload
+            chat_module.set_live_cache(live_cache)  # keep chat grounded on live data
             print(f"[live] {result.status} in {result.duration_s:.1f}s · "
                   f"generated {result.payload['meta']['generated_at_ist']}")
         except Exception as e:
@@ -58,6 +60,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Phase 5G: chat router ---
+app.include_router(chat_module.router)
 
 # --------------------------------------------------------------------------
 # HEALTH
