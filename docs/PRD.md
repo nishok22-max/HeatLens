@@ -3,7 +3,7 @@
 
 **Competition:** Smart India Hackathon — *Extreme Heatwave Early Warning and Human Thermal Stress Index*
 **Pilot city:** Ahmedabad (23.03 N, 72.58 E)
-**Status:** backend complete · frontend built · live forecast running · **181 tests passing**
+**Status:** backend complete · frontend built · live forecast running · **323 tests passing**
 **Name:** the product is **HeatLens**. The Python package is called `heatstress`. That difference is on purpose and must not be "tidied up" — renaming the package would break every import and all file history for nothing a user would ever see.
 
 **Tags used in this document**
@@ -187,7 +187,7 @@ The **PS** column links each requirement back to the problem-statement clause in
 | ID | PS | Requirement | Priority | Status |
 |---|---|---|---|---|
 | FR-1 | PS-1, PS-2 | Compute WBGT (corrected for sunlight), UTCI and the NOAA Heat Index from temperature, humidity, wind and radiation | P0 `[P]` | ✅ Liljegren WBGT via `thermofeel` |
-| FR-2 | PS-2 | Check every index against published reference values in automated tests | P0 `[P]` | ✅ **181 tests** |
+| FR-2 | PS-2 | Check every index against published reference values in automated tests | P0 `[P]` | ✅ **323 tests** |
 | FR-3 | PS-8 | Divide the city into a grid where each cell has its own thermal environment | P0 `[P]` | ✅ 392 cells, 0.693 km² each, ~272 km² total |
 | FR-4 | — | Report the spread between hottest and coolest zone (the go/no-go measurement) | P0 `[P]` | ✅ `05_kill_gate.py` |
 | FR-5 | PS-7, PS-12 | Safe working minutes and strain level per person type, hour by hour | P1 `[P]` | ✅ ISO 7243 + ACGIH; six person types including `elderly` and outdoor construction |
@@ -233,7 +233,7 @@ The **PS** column links each requirement back to the problem-statement clause in
 **Prototype validation**
 
 - **M1 — the decisive one:** heat-stress spread across the city of at least 3 °C. **✅ Met: UTCI spread is 3.88 °C**, and it stays above the line across the entire plausible range from the literature (2.57–6.53 °C). The margin over the threshold is **0.88 °C**, and a test now guards it so the verdict cannot flip silently when the offset changes.
-- **M2:** every index passes its reference-value tests. **✅ 181 passing.**
+- **M2:** every index passes its reference-value tests. **✅ 323 passing.**
 - **M3:** the hottest and coolest zones are physically plausible. **✅ correlation with roads +0.855, with water −0.778, with greenery −0.286** — plausible, but see §4.2: with buildings at zero this is very nearly a road map, which is exactly what FR-16 replaces.
 - **M4:** the demo completes offline without crashing. ⬜ **The frontend is built, but the wifi-off test has still not been ticked off** and must happen before any pitch.
 - **M5 `[P5]` — the model's own go/no-go, written down *before* fitting:** the fitted model ships only if it scores at least **0.25** when tested on held-out geographic blocks (`min_spatial_cv_r2` in the config file), and its 90 % error bars actually contain the true value about 90 % of the time, within 5 points. If it misses, the wiring step refuses to run and the existing method stays. Same discipline as M1: a threshold set in advance and honoured either way.

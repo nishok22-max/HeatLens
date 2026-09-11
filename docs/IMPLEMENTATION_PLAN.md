@@ -1,8 +1,8 @@
 # Implementation Plan
 ## HeatLens — what is built, and what is left
 
-**Repo:** `C:\Users\HP\sih-heat` · **Tests:** **181 passing** · **Backend:** complete · **Frontend:** built · **Live forecast:** running
-**Go/no-go verdict:** PROCEED — heat-stress spread across the city is 3.88 °C against a 3.0 °C threshold, a margin of 0.88 °C
+**Repo:** `C:\Users\HP\sih-heat` · **Tests:** **323 passing** · **Backend:** complete · **Frontend:** built · **Live forecast:** running
+**Go/no-go verdict:** PROCEED — heat-stress spread across the city is **3.43 °C** against a 3.0 °C threshold, a margin of 0.43 °C, now computed from **measured satellite surface temperature** rather than an assumed amplitude
 **Name:** HeatLens. The Python package stays `heatstress` — see `ARCHITECTURE.md` §6 D18
 
 > **How to read this.** §0 is the scorecard against the competition requirements. §1–§4 are what exists today. §5 is the work now in progress. §6 is the path to production. §7 records the findings that changed the design — including the mistakes. Technical terms are defined in the glossary in `PRD.md` Part III.
@@ -22,7 +22,7 @@
 | PS-5 | Demographics — elderly / outdoor-worker density | ⚠️ Phase 3 placeholder → 🚧 Phase 5E adds total population | **Age breakdown still missing** — FR-6a: WorldPop age-sex data or Census 2011 ward tables |
 | PS-6 | Localized weather data | ✅ Phase 2 + Phase 4 | — |
 | PS-7 | Spikes **3–5 days ahead** | ✅ Phase 4 — **6-day horizon**, a day of margin over the requirement | Death counts blocked on PS-4; probability ranges are `[V1]` |
-| PS-8 | High-resolution, hyper-local (zone / ward) | ✅ Phase 2 — 392 zones at 0.693 km², named in Phase 3 | 🚧 Phase 5B–5D measures the pattern from satellite; ward roll-up is `[V1]` |
+| PS-8 | High-resolution, hyper-local (zone / ward) | ✅ Phase 2 — 392 zones at 0.693 km², named in Phase 3; ✅ Phase 5B–5D — the pattern is now **measured** from satellite at 1 km | Landsat at 30 m (`--source gee`) needs Earth Engine sign-in; ward roll-up is `[V1]` |
 | PS-9 | Dynamic colour-coded map dashboard | ✅ §4.1 | The wifi-off test is still unticked (§4.1 item 10) |
 | PS-10 | Actionable automated advisories | ✅ Phase 3 | Native-speaker review of the Hindi/Gujarati text (§4.3 item 2) |
 | PS-11 | **API** able to push SMS/WhatsApp alerts | ⚠️ Phase 4 — API built (26 routes), CAP message valid | **The send is deliberately switched off.** One connector behind an interface that exists. `PRD.md` §3.2 |
@@ -49,7 +49,19 @@ So the build ends in a **go/no-go test with thresholds written down in advance**
 | 1.5–3 °C | Real but modest | Lead with humidity and physiology instead |
 | Under 1.5 °C | Premise is weak | Change direction: *same place, different bodies* |
 
-**The result was 3.88 °C on UTCI → PROCEED.** It stays above the line across the entire plausible range from the published literature (2.57–6.53 °C), so the verdict does not depend on a flattering choice of parameter.
+**The result was 3.88 °C on UTCI → PROCEED**, on the assumed-amplitude method. It has since been **re-run on measured satellite temperature and still passes, at 3.43 °C** — the premise survived having its most flattering assumption removed.
+
+**But it is no longer robust across the whole plausible range, and that must be said whenever the verdict is quoted.** Under the old method the gate passed everywhere in the literature range, so the verdict depended on no parameter choice. With the measured anomaly it depends on `alpha`:
+
+| `alpha` | air-temp spread | UTCI spread | verdict |
+|---|---|---|---|
+| 0.30 | 2.01 °C | 2.57 °C | **MARGINAL** |
+| 0.35 | 2.35 °C | 3.00 °C | MARGINAL (on the threshold) |
+| **0.40** | **2.68 °C** | **3.43 °C** | **PROCEED** ← config |
+| 0.45 | 3.02 °C | 3.86 °C | PROCEED |
+| 0.50 | 3.35 °C | 4.29 °C | PROCEED |
+
+PROCEED holds for roughly the upper two thirds of the declared `alpha_range` and fails below about 0.35. `tests/test_kill_gate.py` pins this so it cannot be quietly forgotten. **Present the alpha sweep alongside the verdict, exactly as the amplitude sweep was presented before.** Fixing this needs ground air-temperature stations across the city — see §7.16.
 
 That same discipline is now being applied a second time: **Phase 5 writes the fitted model's pass mark into the config file before the model is fitted** (`min_spatial_cv_r2: 0.25`), and honours it either way. A threshold set in advance is the only kind that means anything.
 
@@ -70,7 +82,7 @@ That same discipline is now being applied a second time: **Phase 5 writes the fi
 | `solar.py` — sun position, direct/diffuse split | ✅ | Declination checked at equinoxes and solstices; solar noon checked for Ahmedabad |
 | `thermal.py` — Heat Index, WBGT, UTCI, radiant temperature | ✅ | Heat Index matches the NOAA chart within 0.4 °F; our radiant temperature and `thermofeel`'s agree to **0.005 °C** |
 | `physiology.py` — ISO 7243 + ACGIH | ✅ | Limits and work/rest thresholds checked against the published tables |
-| Test suite | ✅ | **181 tests** collected and passing |
+| Test suite | ✅ | **323 tests** collected and passing |
 
 ### Phase 2 — Data and geography
 | Task | Status | Note |
@@ -111,7 +123,7 @@ That same discipline is now being applied a second time: **Phase 5 writes the fi
 ```powershell
 cd C:\Users\HP\sih-heat
 
-.\.venv\Scripts\python.exe -m pytest                                    # 181 tests
+.\.venv\Scripts\python.exe -m pytest                                    # 323 tests
 
 .\.venv\Scripts\python.exe scripts\02_urban_form.py      config\ahmedabad.yaml
 .\.venv\Scripts\python.exe scripts\04_compute_indices.py config\ahmedabad.yaml
@@ -143,7 +155,7 @@ React + TypeScript + Vite in `frontend/`. The production build is a single self-
 | 5 | Safe-work-window grid | done |
 | 6 | Advisory and CAP payload, with unchecked-translation badges | done |
 | 7 | Provenance panel — 7 layers, 3 flagged as not measured | done |
-| 8 | What-if scenarios panel (shift hours · shade · greening) | done — deepened in Phase 5F |
+| 8 | What-if scenarios panel (shift hours · shade · greening) | done — plus a plain-English **Ask a what-if** box over a pre-baked grid, answering offline |
 | 9 | Live / historical dataset switch | done |
 | 10 | **Open the built page from a local file with wifi off** | **TODO — still open. This is the NFR-1 and M4 proof. Do it before the pitch** |
 | 11 | Screen-recorded backup video | TODO — live demos die |
@@ -193,23 +205,37 @@ The work now in progress. Ordered so that **the highest-honesty work ships first
 
 | Phase | Work | Estimate | Depends on |
 |---|---|---|---|
-| **5A** | **Truth in the repo, and a guard on the verdict.** Correct the false scipy claim everywhere, fix the test count, settle on one product name, surface the buildings-are-zero defect in code and in the output, pull the go/no-go logic out of `05_kill_gate.py` into a testable function, and add `tests/test_kill_gate.py` | 2–3 h | nothing |
-| **5B** | **Satellite export.** `sources/gee.py` + `scripts/01_satellite_lst.py`: Landsat 8/9 thermal band (plus greenness and built-up indices), population and built-surface, and a MODIS Aqua sanity check at the 15 coarse blocks. Output `data/processed/satellite_ahmedabad.json` (~80 KB, committed) | 3–5 h | 5A · Earth Engine |
+| **5A ✅** | **Truth in the repo, and a guard on the verdict.** Correct the false scipy claim everywhere, fix the test count, settle on one product name, surface the buildings-are-zero defect in code and in the output, pull the go/no-go logic out of `05_kill_gate.py` into a testable function, and add `tests/test_kill_gate.py` | 2–3 h | nothing |
+| **5B ✅** | **Satellite export — shipping on MODIS; Landsat path written, waiting on one browser sign-in.** `sources/gee.py` + `scripts/01_satellite_lst.py`: Landsat 8/9 thermal band (plus greenness and built-up indices), population and built-surface, and a MODIS Aqua sanity check at the 15 coarse blocks. Output `data/processed/satellite_ahmedabad.json` (~80 KB, committed) | 3–5 h | 5A · Earth Engine |
 | **5C** | **The fitted model.** `downscale.py`: Ridge on 6 inputs, tested on held-out geographic blocks, 90 % conformal intervals, and four comparison baselines — including **the existing hand-chosen weights scored against the real satellite measurement**. `scripts/11_fit_downscaler.py` prints a metrics table ending in a verdict against the pass mark | 3–4 h | 5B |
-| **5D** | **Wire it in — the headline result.** `scripts/12_downscaled_offsets.py` writes a superset data file; a three-level file resolver; re-run 04→05→06→07; **re-bake both data folders**; regenerate the deck and case-study maps *inside this phase* | 2–3 h | 5C passing its own test |
+| **5D ✅** | **Wire it in — the headline result.** `scripts/12_downscaled_offsets.py` writes a superset data file; a three-level file resolver; re-run 04→05→06→07; **re-bake both data folders**; regenerate the deck and case-study maps *inside this phase* | 2–3 h | 5C passing its own test |
 | **5E** | **Population exposure.** Add a population-backed vulnerability surface alongside — not replacing — the placeholder; split the provenance row in two; allow exactly one narrowly-defined, checkable population statistic and keep refusing the rest | 2–3 h | 5B |
 | **5F** | **Finish what-if.** Model-based greening, population-weighted outcomes, a **pre-baked** 48-row scenario grid so sliders work offline, and cooling-centre placement (`siting.py`, FR-15) | 2–3 h | 5C, 5E |
 | **5G** | **Chatbot** — a question-answering agent over the project's own documents and numbers, with a guard that stops it inventing figures. English text only for the first version | ~13 h | 5A–5F for its data |
 | **5H** | **Documentation.** This file, the PRD, the architecture doc, and a new `docs/DECISIONS.md` | 2–3 h | continuous |
 
 **Already done out of 5A** (in the honesty pass that produced this document): the false scipy claim corrected in `README.md` and in `physiology.py`, `solar.py`, `sources/osm.py`, `vulnerability.py`; the test count corrected everywhere including `docs/deck/build.py`; the product name unified to HeatLens across the API, `server.py` and the frontend; and a real bug fixed in the what-if scenario (§7.10).
-**Still open in 5A:** the coverage report surfacing the buildings defect in code, extracting the go/no-go logic, and `tests/test_kill_gate.py`.
 
-**Minimum credible plan for a tight deadline: 5A → 5B → 5C → 5D → a trimmed 5H.** That is the satellite result, honestly stated, with the guard in place. 5E is the next best use of an hour; 5G is the biggest demo win but the largest block of time.
+**5A is now closed.** `killgate.py` holds `verdict()`, `05_kill_gate.py` only prints what it returns, and `tests/test_kill_gate.py` (16 tests) pins the shipped numbers — 3.88 °C on UTCI, margin +0.88 °C — against the *committed* arrays, so a change to the offset that would flip the verdict now fails a test. `UrbanIntensity.coverage()` and `format_coverage()` report the buildings defect in the pipeline's own output rather than in a docstring: on the shipped surface `built` is dead, and **0.75 of the formula's 1.30 total weight is actually in play.**
+
+**5B and 5D are done, by a route the plan did not anticipate.** Earth Engine needs a browser sign-in that no script can perform, so rather than leave the pattern assumed indefinitely, the satellite path now ships on **MODIS Aqua via ORNL DAAC**, which serves land-surface temperature subsets as JSON with no registration, no API key and no approval wait — the same property that made Overpass and Open-Meteo the right calls in the first place (D2). What shipped:
+
+| | |
+|---|---|
+| Instrument | MODIS Aqua `MYD11A2`, day (13:30) **and night (01:30)** — the day overpass is within half an hour of the 14:00 IST focus hour |
+| Period | 21 eight-day composites, April–May 2023–2025 |
+| Coverage | **381 of 392 zones measured** (97.2 %); 11 edge zones filled from measured neighbours and labelled `filled_neighbour` |
+| Resolution | 926 m pixels → 295 distinct pixels behind 392 zones. Honestly blocky; no interpolation invented |
+| Cross-check | **Terra `MOD11A2` agrees at 0.946** rank correlation over the 15 coarse blocks — a different satellite on a different orbit |
+| Verdict | **PROCEED at 3.43 °C** (was 3.88 °C assumed), margin +0.43 °C |
+
+`sources/gee.py` and `--source gee` remain in place and tested: authorise Earth Engine and the same pipeline picks up Landsat at 30 m with no other change. **The 1 km limitation is the reason to still do it.**
+
+**~~Minimum credible plan~~ — 5A, 5B and 5D are shipped.** What remains, in value order: **5C** (the Ridge fit, for error bars and a real greening simulation — the observation already supplies the operational number, so this is no longer on the critical path), **5E** (population), **5F** (cooling-centre siting — the what-if half is now shipped), **5G** (chatbot, the biggest demo win and the largest block of time).
 
 ### 5.1 Four rules this phase must not break
 
-1. **Guard before you change.** `tests/test_kill_gate.py` lands in 5A, *before* anything touches the temperature offset. The margin is 0.88 °C; without a test, a change to the offset could silently flip the project's own verdict.
+1. **Guard before you change.** `tests/test_kill_gate.py` lands in 5A, *before* anything touches the temperature offset. **This worked exactly as intended:** when 5D swapped in the measured pattern, the guard failed on the quoted margin (0.88 → 0.43 °C) while the `PROCEED` verdict itself held. The number was then updated deliberately, with the reason recorded in the test's own docstring, instead of drifting away from every document that quotes it.
 2. **The operational number comes from the *observation*, not the model's prediction.** Predictions pull toward the average, which would shrink the spread by roughly the square root of the fit quality — and that spread is exactly what the go/no-go test measures. The model fills gaps, supplies error bars, and powers the what-if simulator. (`ARCHITECTURE.md` §6 D14.)
 3. **The model's pass mark is honoured in both directions.** `min_spatial_cv_r2: 0.25` goes in the config before fitting. If the model misses it, 5D refuses to write, the existing method stays, and the number is published anyway.
 4. **The offline guarantee is untouchable.** No new network call at runtime, no reimplementation of the physics in TypeScript, scenario grids pre-baked rather than computed live, and the chat panel hides itself when the backend is unreachable.
@@ -259,7 +285,7 @@ siting:                           # NEW
 | 5G | A grounded answer with a visible trace of which numbers it used; "how many people are at risk?" returns the *narrowed* statistic with its caveat, not the old blanket refusal and not a casualty figure; "is this validated?" returns "cross-checked against held-out satellite measurements" and never "validated" |
 | 5H | No file claims scipy is blocked; no file says 135 tests; one product name; `docs/DECISIONS.md` records D2 as **superseded**, not deleted |
 
-The suite is expected to grow from 181 to roughly 200 (5A +4, 5C +5, 5E +4, 5F +3, plus the vocabulary test).
+The suite was expected to grow from 181 to roughly 200. It is at **272**: 5A +16 (the kill-gate guard), 5B +31 (the Earth Engine path), the MODIS path +35, plus the coverage report. The satellite work carried far more silently-wrong-answer surface than estimated — units, pixel geolocation, quality flags paired to the wrong date, and provenance — and that is where most of the new tests went.
 
 ---
 
@@ -294,6 +320,8 @@ The prototype was built so that production is a **substitution, not a rewrite**.
 
 ## 7. What we learned while building
 
+> **Findings 12–15 were added after the satellite data landed, and are the strongest results in this list.**
+
 Recorded because each of these changed the design, and several are presentable results in their own right.
 
 1. **May 2010 Ahmedabad was dry heat, at 13–16 % humidity.** Humidity was not the killer there. The correct thesis is that temperature alone misleads *in both directions*.
@@ -309,3 +337,9 @@ Recorded because each of these changed the design, and several are presentable r
 10. **FIXED — a real bug in the what-if simulator, found by running the tests on a stale cache.** `insight.scenario_shift_hours` asks about specific clock hours (06:00–21:00) but indexed the day's data **by list position**, silently assuming position equals hour of day. That holds for a complete midnight-to-midnight day and fails for a part-day — and a forecast window requested in UTC and read in local time has a part-day at each end. The symptom was an `IndexError` that crashed the whole live computation, and it only appeared when the committed forecast cache had aged relative to the clock. Because the 6-hourly job runs the tests *before* refreshing, a stale cache there would mean nothing publishes.
     The fix makes the function **address data by clock hour**, skip scheduled hours with no forecast rather than guessing them, and report `hours_scored` and `covers_full_shift` so a partial comparison declares itself. Six tests now pin this against fixed inputs, so they cannot pass or fail depending on the day they run — which is exactly how the original failure hid. The historical numbers are unchanged: 17.8 → 11.0 unsafe person-hours, a 38 % reduction.
 11. **The go/no-go test was printed to the screen and never tested**, at a margin of 0.88 °C. The project's own verdict was unguarded. Extracting it into a testable function is the first remaining task of Phase 5, deliberately ordered before anything that changes the temperature offset.
+
+12. **The hand-built urban-form formula barely tracked the real heat pattern: rank correlation 0.197.** This is the vindication of §7.8 and the most presentable result the project has. The shipped map was `0.55·built + 0.25·roads − 0.30·green − 0.20·water` with `built` empty in all 392 zones — road density in a trench coat. Measured against MODIS surface temperature over three pre-monsoon seasons, that index and the real thermal pattern agree at **0.197**, and **48 of 392 zones move by more than 1 °C** when the measurement replaces the guess. We were confidently colouring the wrong neighbourhoods.
+13. **The premise survives losing its most flattering assumption.** The kill gate read 3.88 °C when the amplitude was an assumed 3.0 °C. On measured satellite temperature with `alpha = 0.40` it reads **3.43 °C — still PROCEED**, margin +0.43 °C. A verdict that held only while a convenient number was assumed would have been worthless. Note the direction: the assumption had been *flattering* us by about half a degree.
+14. **Two independent satellites see the same city: Terra vs Aqua rank agreement 0.946.** Different spacecraft, different orbit, different overpass time (10:30 against 13:30). The OpenStreetMap formula had no way of being shown wrong at all; this pattern is checked against an instrument sharing none of its inputs, and the check is stored in the output file rather than asserted on a slide.
+15. **Night is a different map from day — and this project's own thesis is that night is what kills.** The 01:30 surface anomaly spans 4.67 °C against 6.71 °C by day, over different zones: dense masonry releases stored heat all night while the bare periphery dumps it within the hour. The May 2010 deaths tracked six consecutive nights that never fell below 26.7 °C. This layer is now measured and stored per zone, and **nothing in the UI uses it yet** — the most valuable unclaimed result in the repository.
+16. **Nothing in this project has ever been validated against a thermometer inside the city.** The physics is cross-checked against `thermofeel` and published tables; the satellite pattern is cross-checked against a second satellite. Neither is a check on the thing actually published: **per-zone air temperature**. The chain is `measured city weather + measured surface pattern × assumed alpha`, and `alpha` is the join between the two measured halves — the one link with no observation behind it. It cannot be fitted without ground weather stations across Ahmedabad, which do not exist in this repository. Since the go/no-go verdict now depends on `alpha` (§1), **a handful of cheap logging thermometers in a few contrasting zones for one hot week is now the single highest-value piece of fieldwork available to this project** — it would convert the last assumption into a measurement and make the verdict parameter-free again.

@@ -28,7 +28,13 @@ grid:
   h3_resolution: 8                # ~0.46 km^2 per cell, ~0.7 km edge
 
 urban_heat:
-  # PROTOTYPE PATH: urban form from OpenStreetMap, not satellite LST.
+  # Which pattern the pipeline builds on.
+  #   lst            satellite surface temperature (measured) -- the default
+  #   osm_composite  the older OpenStreetMap formula, kept so the before/after
+  #                  comparison is a one-key re-run rather than a rebuild
+  mode: lst
+
+  # SUPERSEDED PATH, retained for that comparison: urban form from OpenStreetMap.
   #   dTa_hex = uhi_amplitude_c * (intensity_hex - mean_intensity)
   # The spatial *pattern* is measured from real urban form. The *amplitude* is a
   # literature value, not a local fit -- say this out loud on stage. Indian
@@ -38,14 +44,72 @@ urban_heat:
   uhi_amplitude_range: [2.0, 5.0]   # for the sensitivity sweep
   include_buildings: false          # heaviest Overpass query; roads proxy it well
 
-  # V1 PATH, retained for when Earth Engine access lands:
+  # SATELLITE PATH (Phase 5). These keys sat here unread for weeks; scripts/01
+  # and sources/gee.py now use them.
   #   dTa = alpha * (LST_hex - LST_city_mean)
+  # alpha converts SURFACE heat to AIR heat and is the one number still
+  # assumed: fitting it needs ground weather stations we do not have. Surface
+  # UHI is several times larger than air UHI -- never quote one as the other.
   alpha: 0.40
-  alpha_range: [0.30, 0.50]
+  alpha_range: [0.30, 0.50]         # the sensitivity sweep, as with amplitude
   lst_composite:
     years: [2023, 2024, 2025]
     months: [4, 5]                # pre-monsoon, clearest skies
     max_cloud_cover_pct: 10
+    # ~25% of the ~800 30 m pixels in a 0.69 km2 zone. Below this the zone's
+    # mean is built from too little of itself to trust, so it is excluded from
+    # the fit and filled in by the model instead.
+    min_valid_px_per_cell: 200
+    # Below this the export aborts rather than passing a handful of
+    # afternoons off as a three-season climatology.
+    min_scenes: 5
+
+    # THE CREDENTIAL-FREE PATH, and the one currently shipping.
+    # ORNL DAAC serves MODIS LST subsets as JSON with no registration and no
+    # API key, so the pattern is measured today instead of assumed until Earth
+    # Engine access lands. 1 km against 0.69 km zones: about 300 distinct
+    # pixels back the 392 zones, so the map is honestly blocky at the
+    # kilometre scale. Landsat at 30 m is the upgrade, same schema.
+    modis:
+      # Aqua crosses at ~13:30 and ~01:30 local. The 13:30 pass is within half
+      # an hour of the 14:00 IST focus hour -- a far better match than Terra's
+      # 10:30, which is why Terra is left free to be the independent check.
+      product: MYD11A2
+      cross_check_product: MOD11A2
+      subset_km: 10                 # +-9.7 km of pixels, covering the bbox
+      # QC bits 6-7: 0 is <=1 K, 1 is <=2 K. Accepting <=2 K keeps 100% of
+      # pixels; demanding the top flag alone would discard 69% of observations
+      # and leave 84 distinct pixels for the whole city -- a stricter screen
+      # that produces a worse map. Both counts are printed by the export.
+      max_error_class: 1
+      min_valid_obs_per_cell: 5     # 8-day composites behind a pixel
+      # Half a MODIS pixel diagonal is ~0.66 km. Beyond 1 km a zone is being
+      # extrapolated, not measured, so it is flagged instead.
+      max_sample_distance_km: 1.0
+  downscale:
+    features: [ndvi, ndbi, built_s, roads, green, water]
+    ridge_lambda_grid: [0.01, 0.1, 1.0, 10.0, 100.0]
+    # Parent hexagons as CV groups: 15 blocks on this grid, sizes 2-49. Whole
+    # blocks are held out, because hiding scattered zones leaves ~5 of each
+    # one's 6 neighbours in training and measures gap-filling, not prediction.
+    cv_group_resolution: 6
+    cv_folds: 5
+    conformal_alpha: 0.10
+    # THE PASS MARK, DECLARED BEFORE THE MODEL IS FITTED. Miss it and Phase 5D
+    # refuses to write, the existing method stays, and the number is published
+    # anyway.
+    min_spatial_cv_r2: 0.25
+
+population:
+  # Free, global, and gridded: portable to any city (NFR-5), unlike Indian
+  # ward-level demographics. This is residential population only -- it says
+  # nothing about age or occupation, so the vulnerability row stays NOT FITTED.
+  source: JRC/GHSL/P2023A/GHS_POP
+  epoch: 2020
+
+siting:
+  walk_rings: 1                     # 7 zones, ~0.9 km: a short walk in extreme heat
+  n_centres: 12
 
 kill_gate:
   # Day-1 decision thresholds on intra-city WBGT spread at the focus hour.

@@ -212,12 +212,66 @@ export interface Action {
   evidence: string;
 }
 
+/** One pre-computed what-if result. Every field was produced by the Python
+ *  physics during the bake — nothing here is calculated in the browser. */
+export interface CoolingRow {
+  shade: number;
+  greening: number;
+  zones_treated: number;
+  utci_before: number;
+  utci_after: number;
+  delta_c: number;
+}
+
+export interface SchedulingRow {
+  shift_start: number;
+  persona: string;
+  window: string;
+  unsafe_before: number;
+  unsafe_after: number;
+  reduction_pct: number;
+  covers_full_shift: boolean;
+}
+
+export interface ScenarioGrid {
+  axes: {
+    shade: number[];
+    greening: number[];
+    shift_start: number[];
+    persona: string[];
+  };
+  cooling: CoolingRow[];
+  scheduling: SchedulingRow[];
+  basis: string;
+}
+
+/** A parser rule authored and tested in `src/heatstress/whatif.py`, compiled
+ *  into the payload so the matcher can run offline. */
+export interface Intent {
+  id: string;
+  pattern: string;
+  parameter: string;
+  transform: "hour" | "percent" | "default" | "literal";
+  value?: number | string;
+}
+
+export interface RefusalRule {
+  id: string;
+  pattern: string;
+  kind: "not_modelled" | "never_claim";
+  omitted_item?: string;
+  reason?: string;
+}
+
 export interface Insights {
   date: string;
   drivers: Driver[];
   scenarios: Scenario[];
   actions: Action[];
   omitted: { item: string; why: string }[];
+  scenario_grid?: ScenarioGrid;
+  intents?: Intent[];
+  refusals?: RefusalRule[];
 }
 
 export interface HeatData {

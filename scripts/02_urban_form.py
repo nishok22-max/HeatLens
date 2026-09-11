@@ -39,6 +39,12 @@ def main(config_path: str) -> None:
     intensity = form.composite(cells)
     offset = sp.urban_heat_offset(intensity, uhi["uhi_amplitude_c"])
 
+    # A layer with no coverage contributes nothing whatever its weight, so the
+    # formula's real composition is printed and stored rather than assumed.
+    coverage = form.coverage(cells)
+    print("\nlayer coverage in the composite formula:")
+    print(sp.format_coverage(coverage))
+
     out = {
         "city": city["name"],
         # Recorded so downstream consumers can see the surface is partial.
@@ -47,6 +53,13 @@ def main(config_path: str) -> None:
                                 getattr(source, "failed_tiles", [])],
         "h3_resolution": grid_cfg["h3_resolution"],
         "uhi_amplitude_c": uhi["uhi_amplitude_c"],
+        # Which layers actually carry the formula on this surface. Stored, not
+        # just printed, so downstream consumers can show it too.
+        "layer_coverage": {
+            name: {k: round(v, 4) if isinstance(v, float) else v
+                   for k, v in row.items()}
+            for name, row in coverage.items()
+        },
         "cells": {
             cell: {
                 "intensity": round(float(intensity[i]), 4),

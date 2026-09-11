@@ -106,8 +106,59 @@ def _unsafe_hours(wbgt_by_hour, persona, working_hours) -> tuple[float, int]:
 DEFAULT_SHIFT = list(range(9, 18))          # 09:00-17:00, a conventional day
 SHIFTED = [6, 7, 8, 9, 10, 17, 18, 19, 20]  # early start, evening return
 
+# The split shift keeps the same number of working hours but takes the middle of
+# the day out of them. Anything else would compare nine hours of work against a
+# shorter day and report the lost work as a safety gain.
+_SPLIT_MORNING = 5          # hours worked before the midday break
+_SHIFT_LENGTH = 9
 
-def scenario_shift_hours(wbgt_series, personas=None, hours=None) -> dict:
+
+def shift_window(start_hour: int, length: int = _SHIFT_LENGTH,
+                 morning: int = _SPLIT_MORNING) -> list[int]:
+    """A split working day beginning at ``start_hour``, as hour-of-day integers.
+
+    ``SHIFTED`` is exactly ``shift_window(6)``. The generalisation exists so a
+    user can ask for a start other than 06:00 without the answer silently
+    changing how many hours are worked: the morning block runs from
+    ``start_hour``, the remainder resumes in the evening, and the total is
+    always ``length``. Hours wrap within the day and are returned sorted, so a
+    very early start does not produce negative hours.
+    """
+    if not 0 <= start_hour <= 23:
+        raise ValueError(f"start_hour {start_hour} is not an hour of the day")
+    if length < 1 or morning < 1 or morning >= length:
+        raise ValueError("a split shift needs a morning block shorter than the day")
+
+    block = [(start_hour + i) % 24 for i in range(morning)]
+    # The evening block resumes after the midday heat, keeping the gap that
+    # makes this a *split* shift rather than simply an earlier one.
+    resume = (start_hour + morning + 6) % 24
+    block += [(resume + i) % 24 for i in range(length - morning)]
+    return sorted(set(block))
+
+
+def _describe_shift(shift: list[int]) -> str:
+    """Render hour integers as the contiguous blocks a scheduler would read.
+
+    [6,7,8,9,10,17,18,19,20] -> "06:00-11:00 and 17:00-21:00". The end of a
+    block is the hour after its last worked hour, because working "the 10:00
+    hour" means finishing at 11:00.
+    """
+    if not shift:
+        return "no working hours"
+    blocks, run = [], [shift[0]]
+    for hour in shift[1:]:
+        if hour == run[-1] + 1:
+            run.append(hour)
+        else:
+            blocks.append(run)
+            run = [hour]
+    blocks.append(run)
+    return " and ".join(f"{b[0]:02d}:00-{(b[-1] + 1) % 24:02d}:00" for b in blocks)
+
+
+def scenario_shift_hours(wbgt_series, personas=None, hours=None,
+                         shift=None) -> dict:
     """Move outdoor work out of the worst hours. Costs nothing but scheduling.
 
     Fully determined by data we already have: the hourly safe-work allowance is
@@ -123,6 +174,7 @@ def scenario_shift_hours(wbgt_series, personas=None, hours=None) -> dict:
     ``hours_scored`` reports how many were actually counted.
     """
     personas = personas or ["construction", "delivery"]
+    shift = list(SHIFTED if shift is None else shift)
     if hours is None:
         hours = range(len(wbgt_series))
     by_hour = {int(h): float(w) for h, w in zip(hours, wbgt_series)}
@@ -132,18 +184,18 @@ def scenario_shift_hours(wbgt_series, personas=None, hours=None) -> dict:
     for key in personas:
         persona = ph.PERSONAS[key]
         b, sb = _unsafe_hours(by_hour, persona, DEFAULT_SHIFT)
-        a, sa = _unsafe_hours(by_hour, persona, SHIFTED)
+        a, sa = _unsafe_hours(by_hour, persona, shift)
         before += b
         after += a
         scored_before += sb
         scored_after += sa
 
-    expected = len(personas) * (len(DEFAULT_SHIFT) + len(SHIFTED))
+    expected = len(personas) * (len(DEFAULT_SHIFT) + len(shift))
     complete = (scored_before + scored_after) == expected
     return {
         "key": "shift_hours",
         "label": "Shift outdoor work hours",
-        "detail": "Move the working day to 06:00-11:00 and 17:00-21:00.",
+        "detail": f"Move the working day to {_describe_shift(shift)}.",
         "cost": "No cost - scheduling only",
         "unsafe_before": round(before, 1),
         "unsafe_after": round(after, 1),

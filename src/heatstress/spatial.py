@@ -39,6 +39,8 @@ import numpy as np
 __all__ = [
     "build_grid",
     "cell_polygon",
+    "COMPOSITE_WEIGHTS",
+    "format_coverage",
     "grid_geojson",
     "UrbanFormSource",
     "UrbanIntensity",
@@ -77,6 +79,42 @@ def cell_polygon(cell: str) -> list[list[float]]:
     ring = [[lon, lat] for lat, lon in boundary]
     ring.append(ring[0])
     return ring
+
+
+def resolve_urban_form(root, slug: str, mode: str = "lst"):
+    """Pick the urban-form file to build on, best available first.
+
+    Three levels, in order:
+
+    1. ``urban_form_lst_<city>.json`` -- offsets from **measured** satellite
+       surface temperature (script 12).
+    2. ``urban_form_<city>.json``     -- the OpenStreetMap composite, whose
+       pattern is a hand-weighted guess and whose largest term is dead.
+    3. ``urban_form_PLACEHOLDER.json``-- synthetic, for pipeline development.
+
+    ``mode='osm_composite'`` skips level 1 deliberately, which is what makes
+    the before/after comparison a one-argument re-run rather than a rebuild.
+    Returns ``(path, level)`` where level is 'lst', 'osm' or 'placeholder', so
+    callers can label the provenance instead of guessing at it.
+    """
+    from pathlib import Path
+
+    processed = Path(root) / "data" / "processed"
+    lst = processed / f"urban_form_lst_{slug}.json"
+    osm = processed / f"urban_form_{slug}.json"
+    placeholder = processed / "urban_form_PLACEHOLDER.json"
+
+    if mode != "osm_composite" and lst.exists():
+        return lst, "lst"
+    if osm.exists():
+        return osm, "osm"
+    return placeholder, "placeholder"
+
+
+def zone_area_km2(cell: str) -> float:
+    """Area of one H3 cell in km2. Equal for every cell at a resolution, which
+    is the whole reason for hexagons over wards (D1)."""
+    return float(h3.cell_area(cell, unit="km^2"))
 
 
 def cell_centroids(cells: list[str]) -> np.ndarray:
@@ -130,6 +168,17 @@ class UrbanIntensity:
 
         These weights are a judgement, not a fit. They are the first thing a
         production model should learn from data rather than assume.
+
+        KNOWN DEFECT -- READ ``coverage`` BEFORE QUOTING THIS FORMULA.
+        A layer with no coverage contributes nothing whatever its weight. On
+        the shipped Ahmedabad surface ``built`` is 0.0 in all 392 zones,
+        because ``include_buildings`` is off (the Overpass query is the
+        heaviest by far), so the **largest weight in the formula contributes
+        nothing** and what is actually being mapped is road density minus
+        greenery and water. ``coverage()`` reports this per layer, and the
+        pipeline prints it, so the defect cannot hide in a docstring. It is
+        the strongest single argument for measuring the pattern from
+        satellite instead -- see ARCHITECTURE.md D2 (superseded) and D14.
         """
         built = np.array([self.built.get(c, 0.0) for c in cells])
         roads = np.array([self.roads.get(c, 0.0) for c in cells])
@@ -138,6 +187,51 @@ class UrbanIntensity:
 
         raw = 0.55 * built + 0.25 * roads - 0.30 * green - 0.20 * water
         return _minmax(raw)
+
+    def coverage(self, cells: list[str]) -> dict[str, dict]:
+        """Per-layer coverage, so a dead layer is visible rather than implied.
+
+        For each layer: the weight it carries in ``composite``, the fraction
+        of cells where it is non-zero, its mean, and ``effective_weight`` --
+        the weight actually exercised, i.e. zero where the layer is empty.
+        ``dead`` marks a layer present in the formula and absent from the data.
+        """
+        report = {}
+        for name, weight in COMPOSITE_WEIGHTS.items():
+            values = np.array([getattr(self, name).get(c, 0.0) for c in cells],
+                              dtype=float)
+            covered = float(np.mean(values > 0.0)) if values.size else 0.0
+            report[name] = {
+                "weight": weight,
+                "covered_fraction": covered,
+                "mean": float(np.mean(values)) if values.size else 0.0,
+                "dead": covered == 0.0,
+                "effective_weight": 0.0 if covered == 0.0 else weight,
+            }
+        return report
+
+
+# The weights in ``UrbanIntensity.composite``, named so the coverage report
+# and the formula cannot drift apart. Signs are dropped: what matters here is
+# how much of the formula a layer accounts for, not which way it pushes.
+COMPOSITE_WEIGHTS = {"built": 0.55, "roads": 0.25, "green": 0.30, "water": 0.20}
+
+
+def format_coverage(report: dict[str, dict]) -> str:
+    """Render ``UrbanIntensity.coverage`` as a table, dead layers called out."""
+    lines = [f"  {'layer':<8}{'weight':>8}{'cells>0':>10}{'mean':>8}   note",
+             "  " + "-" * 46]
+    for name, row in report.items():
+        note = "*** DEAD -- contributes nothing ***" if row["dead"] else ""
+        lines.append(f"  {name:<8}{row['weight']:>8.2f}"
+                     f"{row['covered_fraction'] * 100:>9.0f}%{row['mean']:>8.3f}   {note}")
+    dead = [n for n, r in report.items() if r["dead"]]
+    if dead:
+        live = sum(r["effective_weight"] for r in report.values())
+        lines.append(f"  {', '.join(dead)} empty: {live:.2f} of "
+                     f"{sum(COMPOSITE_WEIGHTS.values()):.2f} of the formula's "
+                     f"weight is actually in play.")
+    return "\n".join(lines)
 
 
 def _minmax(values: np.ndarray) -> np.ndarray:

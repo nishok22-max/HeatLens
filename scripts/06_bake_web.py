@@ -57,9 +57,18 @@ def main(config_path: str) -> None:
                    allow_pickle=False)
     cells = [str(c) for c in cube["cells"]]
     stamps = [str(t) for t in cube["timestamps_ist"]]
-    form = json.loads(
-        (ROOT / "data" / "processed" / f"urban_form_{slug}.json").read_text(
-            encoding="utf-8"))
+    form_path, form_level = sp.resolve_urban_form(
+        ROOT, slug, config["urban_heat"].get("mode", "lst"))
+    form = json.loads(Path(form_path).read_text(encoding="utf-8"))
+
+    # The amplitude the pattern ACTUALLY spans, taken from the form file rather
+    # than from the config. On the satellite path the offsets are alpha x a
+    # measured anomaly, which spans 2.68 degC -- not the 3.0 degC the old
+    # assumed method used. Passing the config value here would overstate the
+    # greening benefit by about a tenth, and would print a number the map does
+    # not agree with. Script 12 writes this key for exactly this reason.
+    amplitude_c = float(form.get("uhi_amplitude_c",
+                                 uhi["uhi_amplitude_c"]))
 
     # Human-readable zone names. Without these the UI can only show an H3 code
     # like "8842cc6821fffff", which nobody can act on or discuss.
@@ -114,7 +123,7 @@ def main(config_path: str) -> None:
             # small, but exactly the sort of thing a meteorologist judge checks,
             # and the "14:00 peak" is really the 14:30 sample.
             "labels_ist": [stamps[i][11:16] for i in day_idx],
-            "uhi_amplitude_c": uhi["uhi_amplitude_c"],
+            "uhi_amplitude_c": amplitude_c,
         },
         "hexes": {
             cell: {
@@ -190,6 +199,40 @@ def main(config_path: str) -> None:
     })
 
     # ---- 6. meta.json : provenance and every declared caveat --------------
+    # The two rows describing WHERE the intra-city pattern comes from are built
+    # from the file actually in use, never hard-coded. This panel is the
+    # project's honesty mechanism, and a panel describing a method the pipeline
+    # no longer runs would be worse than no panel at all.
+    if form.get("method") == "satellite_lst":
+        src = form["source"]
+        heat_pattern_rows = [
+            {"layer": "urban heat pattern",
+             "plain": "Which neighbourhoods actually run hotter",
+             "source": src["instrument"],
+             "resolution": (f"{src['native_resolution_m']} m pixels, "
+                            f"{src.get('n_composites', '?')} composites, sampled "
+                            f"to H3 res {config['grid']['h3_resolution']}"),
+             "status": (f"MEASURED -- {form['coverage']['cells_observed']} of "
+                        f"{form['coverage']['cells_total']} zones observed, the "
+                        "rest filled from measured neighbours")},
+            {"layer": "surface-to-air conversion",
+             "plain": "How much of the ground's extra heat reaches the air you breathe",
+             "source": f"alpha = {form['alpha']}, literature value",
+             "resolution": "one coefficient, city-wide",
+             "status": "ASSUMED -- the only assumed number left in the pattern"},
+        ]
+    else:
+        heat_pattern_rows = [
+            {"layer": "urban form", "plain": "How built-up each area is",
+             "source": "OpenStreetMap via Overpass",
+             "resolution": f"H3 res {config['grid']['h3_resolution']} (~0.74 km2)",
+             "status": "measured"},
+            {"layer": "UHI amplitude", "plain": "How much hotter cities get",
+             "source": "literature value",
+             "resolution": f"{amplitude_c} degC city-wide",
+             "status": "ASSUMED -- not fitted locally"},
+        ]
+
     row = wbgt[focus_idx]
     urow = utci[focus_idx]
     write(OUT / "meta.json", {
@@ -213,12 +256,7 @@ def main(config_path: str) -> None:
             {"layer": "weather", "plain": "Past weather",
              "source": "Open-Meteo ERA5 archive",
              "resolution": "~31 km, hourly", "status": "measured"},
-            {"layer": "urban form", "plain": "How built-up each area is", "source": "OpenStreetMap via Overpass",
-             "resolution": f"H3 res {config['grid']['h3_resolution']} (~0.74 km2)",
-             "status": "measured"},
-            {"layer": "UHI amplitude", "plain": "How much hotter cities get", "source": "literature value",
-             "resolution": f"{uhi['uhi_amplitude_c']} degC city-wide",
-             "status": "ASSUMED -- not fitted locally"},
+            *heat_pattern_rows,
             {"layer": "thermal indices", "plain": "Heat-stress calculations", "source": "thermofeel (ECMWF); "
              "WBGT by Liljegren, UTCI polynomial", "resolution": "per cell-hour",
              "status": "measured"},
@@ -238,12 +276,27 @@ def main(config_path: str) -> None:
         # plain and keeps technical as supporting detail.
         "caveats": [
             {
-                "plain": "We know WHICH neighbourhoods are hotter, but not exactly "
-                         "HOW MUCH hotter. The pattern is measured from real map "
-                         "data; the size of the difference is a published average.",
-                "technical": "UHI amplitude is assumed, not measured: the spatial "
-                             "pattern is real but the magnitude is a literature "
-                             "value. See the sensitivity sweep.",
+                "plain": (
+                    "We know WHICH neighbourhoods are hotter because a satellite "
+                    "measured the ground temperature over three pre-monsoon "
+                    "seasons. What stays estimated is how much of that extra "
+                    "ground heat reaches the air around a person; we use a "
+                    "published fraction for that."
+                    if form.get("method") == "satellite_lst" else
+                    "We know WHICH neighbourhoods are hotter, but not exactly "
+                    "HOW MUCH hotter. The pattern is measured from real map "
+                    "data; the size of the difference is a published average."),
+                "technical": (
+                    f"Spatial pattern measured from satellite land-surface "
+                    f"temperature. Air offset = alpha x LST anomaly, alpha = "
+                    f"{form.get('alpha')}, a literature value -- alpha cannot be "
+                    f"fitted without ground weather stations across the city. "
+                    f"Surface UHI is several times larger than air UHI; the two "
+                    f"must not be quoted for one another."
+                    if form.get("method") == "satellite_lst" else
+                    "UHI amplitude is assumed, not measured: the spatial "
+                    "pattern is real but the magnitude is a literature "
+                    "value. See the sensitivity sweep."),
             },
             {
                 "plain": "We could not get neighbourhood-level data on who lives "
@@ -283,15 +336,29 @@ def main(config_path: str) -> None:
             # sound over two or three years, stretched over sixteen. Ahmedabad
             # grew substantially in that time.
             {
-                "plain": "The weather is from 2010, but the map of roads, parks "
-                         "and buildings is from today. The city has grown since "
-                         "then, so the hot and cool areas shown are today's "
-                         "Ahmedabad, not 2010's.",
-                "technical": "Temporal mismatch: OpenStreetMap urban form is "
-                             "present-day while the meteorology is the May 2010 "
-                             "hindcast. The stable-urban-form assumption (A1) is "
-                             "reasonable over a few years and strained over "
-                             "sixteen. A present-day run aligns both layers.",
+                "plain": (
+                    "The weather is from 2010, but the satellite pictures of "
+                    "which ground runs hot are from 2023-2025. The city has "
+                    "grown since 2010, so the hot and cool areas shown are "
+                    "today's Ahmedabad, not 2010's."
+                    if form.get("method") == "satellite_lst" else
+                    "The weather is from 2010, but the map of roads, parks "
+                    "and buildings is from today. The city has grown since "
+                    "then, so the hot and cool areas shown are today's "
+                    "Ahmedabad, not 2010's."),
+                "technical": (
+                    f"Temporal mismatch: the thermal pattern is a "
+                    f"{form['source']['years'][0]}-{form['source']['years'][-1]} "
+                    f"pre-monsoon composite while the meteorology is the May "
+                    f"2010 hindcast. The stable-urban-form assumption (A1) is "
+                    f"reasonable over a few years and strained over fifteen. A "
+                    f"present-day run aligns both layers."
+                    if form.get("method") == "satellite_lst" else
+                    "Temporal mismatch: OpenStreetMap urban form is "
+                    "present-day while the meteorology is the May 2010 "
+                    "hindcast. The stable-urban-form assumption (A1) is "
+                    "reasonable over a few years and strained over "
+                    "sixteen. A present-day run aligns both layers."),
             },
         ],
         "is_placeholder_urban": bool(cube["is_placeholder_urban"]),
@@ -322,6 +389,8 @@ def main(config_path: str) -> None:
     # illustrative. Interventions that cannot be modelled with the data we have
     # (hydration, water stations) are omitted rather than faked.
     from heatstress import insight as ins
+    from heatstress import scenario_grid as sg
+    from heatstress import whatif as wi
 
     focus_ta = ta_focus
     focus_rh = rh_focus
@@ -337,9 +406,17 @@ def main(config_path: str) -> None:
             ins.scenario_shift_hours(day_series),
             ins.scenario_shade(focus_ta, focus_rh, focus_wind, focus_ghi),
             ins.scenario_greening(focus_ta, focus_rh, focus_wind, focus_ghi,
-                                  intensity_arr, uhi["uhi_amplitude_c"]),
+                                  intensity_arr, amplitude_c),
         ],
         "actions": ins.recommended_actions(day_series, day_labels),
+        # The pre-baked what-if grid and the parser rules that address it.
+        # Both ride inside insights.json, which is already compiled into the
+        # bundle at build time -- so the ask box answers with the wifi off,
+        # which is the whole reason the grid exists rather than an API call.
+        "scenario_grid": sg.build_grid(focus_ta, focus_rh, focus_wind, focus_ghi,
+                                       intensity_arr, amplitude_c, day_series),
+        "intents": wi.compile_intents(),
+        "refusals": wi.compile_refusals(),
         "omitted": [
             {"item": "Water stations / hydration measures",
              "why": "Hydration is not a thermal quantity. Our model cannot "

@@ -20,6 +20,7 @@ from heatstress import physiology as ph
 from heatstress import psychro as ps
 from heatstress import risk as rk
 from heatstress import solar as so
+from heatstress import spatial as sp
 from heatstress import thermal as th
 from heatstress import vulnerability as vu
 from heatstress.sources import openmeteo as om
@@ -35,10 +36,14 @@ def main(config_path: str, urban_form_path: str | None = None) -> None:
 
     # -- urban form -------------------------------------------------------
     if urban_form_path is None:
-        real = ROOT / "data" / "processed" / f"urban_form_{slug}.json"
-        placeholder = ROOT / "data" / "processed" / "urban_form_PLACEHOLDER.json"
-        urban_form_path = real if real.exists() else placeholder
+        urban_form_path, level = sp.resolve_urban_form(
+            ROOT, slug, config["urban_heat"].get("mode", "lst"))
+        print(f"urban form: {Path(urban_form_path).name}  [{level}]")
     form = json.loads(Path(urban_form_path).read_text(encoding="utf-8"))
+
+    if form.get("method") == "satellite_lst":
+        print(f"  measured pattern from {form['source']['instrument']}")
+        print(f"  alpha = {form['alpha']} (the one number still assumed)")
 
     if form.get("SYNTHETIC_PLACEHOLDER"):
         print("!" * 70)

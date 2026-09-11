@@ -33,6 +33,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from heatstress import advisory as ad
 from heatstress import insight as ins
+from heatstress import scenario_grid as sg
+from heatstress import whatif as wi
 from heatstress import physiology as ph
 from heatstress import psychro as ps
 from heatstress import risk as rk
@@ -298,8 +300,18 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
     tz = city["timezone_offset_hours"]
     lat, lon = city["centre"]["lat"], city["centre"]["lon"]
 
-    form_path = ROOT / "data" / "processed" / f"urban_form_{slug}.json"
-    form = json.loads(form_path.read_text("utf-8"))
+    form_path, form_level = sp.resolve_urban_form(
+        ROOT, slug, uhi.get("mode", "lst"))
+    form = json.loads(Path(form_path).read_text("utf-8"))
+
+    # The amplitude the pattern ACTUALLY spans, taken from the form file rather
+    # than from the config. On the satellite path the offsets are alpha x a
+    # measured anomaly, which spans 2.68 degC -- not the 3.0 degC the old
+    # assumed method used. Passing the config value here would overstate the
+    # greening benefit by about a tenth, and would print a number the map does
+    # not agree with. Script 12 writes this key for exactly this reason.
+    amplitude_c = float(form.get("uhi_amplitude_c",
+                                 uhi["uhi_amplitude_c"]))
     cells = sorted(form["cells"])
     d_ta = np.array([form["cells"][c]["d_ta_c"] for c in cells])
     intensity = np.array([form["cells"][c]["intensity"] for c in cells])
@@ -397,7 +409,7 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
             "city": city["name"], "date": focus_day,
             "hours_ist": [int(stamps[i][11:13]) for i in day_idx],
             "labels_ist": [stamps[i][11:16] for i in day_idx],
-            "uhi_amplitude_c": uhi["uhi_amplitude_c"],
+            "uhi_amplitude_c": amplitude_c,
         },
         "hexes": {
             cell: {
@@ -457,6 +469,39 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
         p = (hi - lo) * pad
         return [round(lo - p, 2), round(hi + p, 2)]
 
+    # Which layers describe WHERE the intra-city pattern comes from, built from
+    # the file actually loaded. The live forecast runs on the same offsets the
+    # historical replay does, so it must make the same claims about them --
+    # a live panel still citing OpenStreetMap while computing on satellite
+    # measurements is exactly the drift this mechanism exists to catch.
+    if form.get("method") == "satellite_lst":
+        src = form["source"]
+        heat_pattern_rows = [
+            {"layer": "urban heat pattern",
+             "plain": "Which neighbourhoods actually run hotter",
+             "source": src["instrument"],
+             "resolution": (f"{src['native_resolution_m']} m pixels, sampled to "
+                            f"H3 res {config['grid']['h3_resolution']}"),
+             "status": (f"MEASURED -- {form['coverage']['cells_observed']} of "
+                        f"{form['coverage']['cells_total']} zones observed")},
+            {"layer": "surface-to-air conversion",
+             "plain": "How much of the ground's extra heat reaches the air you breathe",
+             "source": f"alpha = {form['alpha']}, literature value",
+             "resolution": "one coefficient, city-wide",
+             "status": "ASSUMED -- the only assumed number left in the pattern"},
+        ]
+    else:
+        heat_pattern_rows = [
+            {"layer": "urban form", "plain": "How built-up each area is",
+             "source": "OpenStreetMap via Overpass",
+             "resolution": f"H3 res {config['grid']['h3_resolution']}",
+             "status": "measured"},
+            {"layer": "UHI amplitude", "plain": "How much hotter cities get",
+             "source": "literature value",
+             "resolution": f"{amplitude_c} degC city-wide",
+             "status": "ASSUMED -- not fitted locally"},
+        ]
+
     meta_data = {
         "city": city["name"], "centre": city["centre"], "bbox": city["bbox"],
         "h3_resolution": config["grid"]["h3_resolution"], "n_cells": len(cells),
@@ -483,14 +528,7 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
             {"layer": "weather", "plain": "Weather forecast",
              "source": "Open-Meteo forecast API", "resolution": "~11 km, hourly",
              "status": "measured"},
-            {"layer": "urban form", "plain": "How built-up each area is",
-             "source": "OpenStreetMap via Overpass",
-             "resolution": f"H3 res {config['grid']['h3_resolution']}",
-             "status": "measured"},
-            {"layer": "UHI amplitude", "plain": "How much hotter cities get",
-             "source": "literature value",
-             "resolution": f"{uhi['uhi_amplitude_c']} degC city-wide",
-             "status": "ASSUMED -- not fitted locally"},
+            *heat_pattern_rows,
             {"layer": "thermal indices", "plain": "Heat-stress calculations",
              "source": "thermofeel (ECMWF); WBGT by Liljegren, UTCI polynomial",
              "resolution": "per cell-hour", "status": "measured"},
@@ -510,11 +548,21 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
                       "will change. It was last updated at the time shown above.",
              "technical": "Open-Meteo forecast, refreshed when the pipeline runs; "
                           "no ensemble spread or prediction intervals are shown."},
-            {"plain": "Being live does not make it more accurate. How much hotter "
-                      "each neighbourhood gets is still a published average, not "
-                      "something measured here.",
-             "technical": "UHI amplitude remains assumed; live input changes "
-                          "currency, not validation."},
+            {"plain": ("Being live does not make it more accurate. Which "
+                       "neighbourhoods run hotter is measured from satellite "
+                       "images; how much of that reaches the air is still a "
+                       "published average."
+                       if form.get("method") == "satellite_lst" else
+                       "Being live does not make it more accurate. How much hotter "
+                       "each neighbourhood gets is still a published average, not "
+                       "something measured here."),
+             "technical": ("Which zones are hotter is measured from satellite "
+                           "surface temperature; the surface-to-air coefficient "
+                           "alpha remains assumed. Live input changes currency, "
+                           "not validation."
+                           if form.get("method") == "satellite_lst" else
+                           "UHI amplitude remains assumed; live input changes "
+                           "currency, not validation.")},
             {"plain": "We could not get neighbourhood-level data on who lives "
                       "where, so the risk map reflects how hot a place is, not "
                       "how vulnerable its residents are.",
@@ -555,9 +603,18 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
             ins.scenario_shift_hours(day_series, hours=day_hours),
             ins.scenario_shade(focus_ta, focus_rh, focus_wind, focus_ghi),
             ins.scenario_greening(focus_ta, focus_rh, focus_wind, focus_ghi,
-                                  intensity, uhi["uhi_amplitude_c"]),
+                                  intensity, amplitude_c),
         ],
         "actions": ins.recommended_actions(day_series, day_labels),
+        # The pre-baked what-if grid and the parser rules that address it.
+        # Both ride inside insights.json, which is already compiled into the
+        # bundle at build time -- so the ask box answers with the wifi off,
+        # which is the whole reason the grid exists rather than an API call.
+        "scenario_grid": sg.build_grid(focus_ta, focus_rh, focus_wind, focus_ghi,
+                                       intensity, amplitude_c, day_series,
+                                       hours=day_hours),
+        "intents": wi.compile_intents(),
+        "refusals": wi.compile_refusals(),
         "omitted": [
             {"item": "Water stations / hydration measures",
              "why": "Hydration is not a thermal quantity. Our model cannot "

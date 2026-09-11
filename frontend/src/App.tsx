@@ -12,6 +12,7 @@ import { ZonePicker } from "./components/ZonePicker";
 import { KpiRow } from "./components/KpiRow";
 import { Drivers } from "./components/Drivers";
 import { Scenarios } from "./components/Scenarios";
+import { AskWhatIf } from "./components/AskWhatIf";
 import { ActionList } from "./components/ActionList";
 import { IndexComparison } from "./components/IndexComparison";
 import { NightRecovery } from "./components/NightRecovery";
@@ -441,6 +442,7 @@ export default function App() {
                 </button>
               </div>
               
+              <AskWhatIf insights={data.insights} />
               <Scenarios insights={data.insights} />
             </div>
           </div>
@@ -483,6 +485,7 @@ export default function App() {
             <h2 className="text-[20px] font-black text-ink tracking-tight uppercase">INTERVENTION SIMULATION</h2>
             <p className="text-[12px] text-ink-soft font-medium">Compare response measures physically re-evaluated against the baseline heat state.</p>
           </div>
+          <AskWhatIf insights={data.insights} />
           <Scenarios insights={data.insights} />
           <ActionList insights={data.insights} />
         </div>

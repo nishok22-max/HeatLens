@@ -24,7 +24,7 @@ This document describes the system **as it actually is**, and marks clearly anyw
 | PS-5 | Demographics — elderly / outdoor-worker density | **L4** | `vulnerability.py`; Phase 5E adds population counts with no age split — §9 | ⚠️🚧 |
 | PS-6 | Localized weather data | **L1** | `sources/openmeteo.py` — past and forecast, with unit checks | ✅ |
 | PS-7 | Predict spikes **3–5 days ahead** | **L1→L3** | 6-day forecast through the same physics; `live.py` republishes — §3, §4 | ⚠️ lead time ✅, heat stress ✅, death counts ⬜ |
-| PS-8 | High-resolution, hyper-local (zone / ward) | **L1** | `spatial.py` — 392 zones at 0.693 km²; `03_place_names.py` names them. Phase 5 measures the pattern from satellite — §9 | ✅ |
+| PS-8 | High-resolution, hyper-local (zone / ward) | **L1** | `spatial.py` — 392 zones at 0.693 km²; `03_place_names.py` names them. The pattern is **measured** from MODIS at 1 km (`sources/modis_ornl.py`), Landsat at 30 m one flag away — §9, D19 | ✅ |
 | PS-9 | Dynamic colour-coded map dashboard | **L5** | `frontend/` — hand-built SVG map; MapLibre was removed (D17) — §3 | ✅ |
 | PS-10 | Actionable automated public health advisories | **L5** | `advisory.py` (text + CAP), `insight.py` (causes, scenarios, actions) | ✅ |
 | PS-11 | **API** able to push SMS/WhatsApp alerts | **L5** | `api/main.py` — 26 read routes (D16); CAP message valid; **send switched off on purpose. PRD §3.2** | ⚠️ |
@@ -45,7 +45,8 @@ flowchart LR
     direction TB
     OM["Open-Meteo<br/>past weather + live forecast"]
     OSM["OpenStreetMap<br/>via Overpass API"]
-    GEE["Earth Engine (Phase 5)<br/>Landsat 8/9 ST_B10 · GHS-POP"]
+    SAT["ORNL DAAC · no credential<br/>MODIS Aqua LST day + night<br/>Terra as independent check"]
+    GEE["Earth Engine (optional upgrade)<br/>Landsat 8/9 ST_B10 · GHS-POP"]
     STD["Published standards<br/>ISO 7243 · ACGIH · CAP 1.2"]
   end
 
@@ -68,8 +69,9 @@ flowchart LR
 
   OM --> L1
   OSM --> L1
-  GEE -.Phase 5.-> L1
-  GEE -.Phase 5.-> L4
+  SAT --> L1
+  GEE -.30 m upgrade.-> L1
+  GEE -.Phase 5E.-> L4
   STD --> L3
   L5 --> MAP
   L5 --> OFF
@@ -90,10 +92,10 @@ flowchart TD
   RHc["RH · city level"]
   WS["wind 10 m"]
   GHI["GHI · direct · diffuse"]
-  UF["urban form per cell<br/>roads · green · water"]
+  UF["satellite LST per zone<br/>MODIS Aqua, 21 composites"]
 
-  UF --> INT["intensity 0-1<br/>percentile scaled"]
-  INT --> DTA["dTa = amplitude x<br/>intensity - mean"]
+  UF --> INT["anomaly = zone - city mean<br/>MEASURED"]
+  INT --> DTA["dTa = alpha x anomaly<br/>alpha = 0.40, assumed"]
   Ta --> TAH["Ta_cell"]
   DTA --> TAH
 
@@ -349,17 +351,23 @@ scripts/               00 placeholder form · 02 urban form · 03 place names ·
                        04 indices · 05 kill gate · 06 bake web · 07 live ·
                        08 live scheduler
 
-Planned in Phase 5 (§9):
-  sources/gee.py       Earth Engine: Landsat temperature, greenness, population
+Built in Phase 5A–5B:
+  killgate.py          verdict() pulled out of script 05, now tested against
+                       the committed arrays (16 tests)
+  sources/gee.py       Earth Engine: Landsat temperature, greenness, built
+                       surface, population, MODIS rank check. Initialised
+                       inside a function, cached per chunk, units asserted
+  scripts/01           satellite export -- runs once Earth Engine is authorised
+
+Still planned in Phase 5 (§9):
   downscale.py         Ridge fit, spatial block CV, conformal intervals, predict
-  killgate.py          verdict() pulled out of script 05 so it can be tested
   siting.py            greedy best-coverage cooling-centre placement
-  scripts/01, 11, 12   satellite export · fit model · apply offsets
+  scripts/11, 12       fit model · apply offsets
 ```
 
 ### 5.1 Every number computed twice, on purpose
 
-Each headline index is calculated two independent ways: once by our own code written straight from the published equations, and once by `thermofeel`, the European weather centre's operational library. The test suite compares them (**181 tests**).
+Each headline index is calculated two independent ways: once by our own code written straight from the published equations, and once by `thermofeel`, the European weather centre's operational library. The test suite compares them (**323 tests**).
 
 | quantity | ours | reference | agreement |
 |---|---|---|---|
@@ -379,7 +387,7 @@ A decision log is only worth keeping if reversals stay visible. Two entries belo
 | # | Decision | Status | Why |
 |---|---|---|---|
 | D1 | **Equal-area hexagons, not municipal wards** | Accepted | Ward boundary files are a multi-day hunt with nothing to learn from. The hex grid covers any city instantly and every zone has the same area (0.693 km²), so per-zone numbers are directly comparable — which is not true of wards, whose areas vary wildly. |
-| D2 | **OpenStreetMap city shape, not satellite temperature** | **Superseded by D14** | Correct at the time: no registration, no approval wait, plain JSON so no heavyweight geospatial libraries, and it works for any city immediately. Satellite access has since been granted, and §2.3 shows the OpenStreetMap formula collapsed into road density — so the premise no longer holds. |
+| D2 | **OpenStreetMap city shape, not satellite temperature** | **Superseded by D14, and now retired in code** | Correct at the time: no registration, no approval wait, plain JSON so no heavyweight geospatial libraries, and it works for any city immediately. §2.3 then showed the formula had collapsed into road density, and the satellite measurement showed the two agree at only **0.197**. The pipeline now runs on measured surface temperature (D19); the OpenStreetMap path is kept behind `urban_heat.mode: osm_composite` **solely so the before/after comparison is a one-key re-run**, and for the place-name lookup, which is unaffected. |
 | D3 | **`thermofeel`, not `pythermalcomfort`** | **Rewritten — the original reason was false** | The original entry said Windows Application Control blocked a `scipy.optimize` DLL. **On this machine `scipy 1.18.1`, `scipy.optimize` and `pythermalcomfort 4.4.2` all import cleanly.** The decision stands on its own merits regardless: `thermofeel` ships the full **Liljegren** WBGT model, which is what retired assumption A2, and it is the European weather centre's operational library. |
 | D4 | **ISO 7243 + ACGIH lookup tables, not the ISO 7933 differential model** | Accepted | Tables rather than an equation that has to be solved numerically: nothing can fail to converge mid-demo, and tables are what occupational hygienists actually use — so the output maps onto a decision an official can sign. *(Originally presented as a consequence of D3; it is a choice on its own merits.)* |
 | D5 | **Replay a past event first, forecast second** | Accepted, extended | Forecasting is a separate problem that does not test the core premise, and replaying a real disaster you can point at is more persuasive. A live forecast has since been added alongside; the historical replay remains the validation artefact. |
@@ -395,6 +403,11 @@ A decision log is only worth keeping if reversals stay visible. Two entries belo
 | D15 | **Use free global population data; leave vulnerability a city-wide constant** | Accepted 🚧 | Population is measurable globally for free; neighbourhood demographics are not. Splitting the single "vulnerability" row into a measured population row and an unchanged `NOT FITTED` vulnerability row is more honest than one row carrying both — and it removes the circularity where exposure was derived from the hazard's own input. |
 | D16 | **FastAPI added, but never something the demo depends on** | Accepted | The offline build remains the NFR-1 guarantee. The API is additive: live refresh, networked browser clients, and later the chatbot. Anything that would make the page *require* it is out of bounds. |
 | D17 | **MapLibre GL removed, replaced with a hand-built SVG map** | Accepted | MapLibre loads its parser in a web worker, and Chrome refuses to create a worker for a page opened from a local file — so the map rendered blank from disk, a direct NFR-1 violation. 392 polygons is trivial geometry. Removing it also dropped ~1.5 MB from the bundle, fixed a styling bug, and brought real keyboard access and correct printing. *(Moved here from `IMPLEMENTATION_PLAN.md` §4.1, where an architectural fact was buried in a frontend note.)* |
+| D19 | **Ship the measured pattern on MODIS at 1 km now, rather than wait for Landsat at 30 m** | Accepted | Earth Engine needs a one-off browser sign-in and a Cloud project — a step no script can perform. The alternative to a coarse measurement was not a fine measurement, it was **an indefinite continuation of the guess**, and §2.3 shows the guess correlates 0.197 with reality. ORNL DAAC serves MODIS LST as JSON with no registration, no key and no wait, which is the same reasoning as D2 applied to thermal imagery. The cost is stated in the data itself: 295 distinct pixels behind 392 zones, `zones_per_pixel` and `native_resolution_m` carried in every export. `sources/gee.py` and `--source gee` stay tested and one flag away. |
+| D20 | **Sample the containing pixel; never interpolate between them** | Accepted | At 926 m the pixel is about the size of a 0.69 km² zone, so bilinear smoothing would manufacture sub-pixel detail the instrument never resolved — a plausible-looking invented pattern, which is the exact failure this project exists to avoid. Neighbouring zones therefore share values and the map is honestly blocky. A test pins it. |
+| D21 | **Aqua as the source, Terra as the referee** | Accepted | Aqua crosses at 13:30, within half an hour of the 14:00 IST focus hour the kill gate is scored on; Terra crosses at 10:30, before the afternoon peak. Using the better-timed instrument for the number and the other for an independent rank check turns a spare data source into a falsification test — they agree at **0.946** over the 15 coarse blocks. |
+| D22 | **The what-if box parses; it never generates** | Accepted | A free-text surface is the easiest place in this project to destroy its own credibility, because generated prose sitting where a traceable number belongs is indistinguishable from a traceable number. So the box maps English onto the levers the physics already models, looks the answer up in a grid computed during the bake, and refuses everything else. The rules are authored and tested in `whatif.py`, compiled into `insights.json`, and matched by ~150 lines of TypeScript that cannot compute anything. Refusals reuse the `omitted` reasons already on screen rather than new copy, so there is one wording to keep true. |
+| D23 | **Pre-baked grid, not an API call — so the simulator survives the wifi being off** | Accepted | Rule 4 of Phase 5 forbids new runtime network calls and physics in TypeScript, and NFR-1 requires the page to work from disk. Both point the same way: run all 44 combinations during the bake and ship the answers as data. Verified with the backend killed — the badge reads OFFLINE and the box still answers. The cost is that only grid points can be asked for; off-grid values snap to the nearest row and the UI says so, rather than interpolating (D20). |
 | D18 | **One product name: HeatLens. The package stays `heatstress`** | Accepted | Six names were in circulation (HeatLens, HEATSHIELD, Hydra, Heatblast, HeatTwin, "Heat Stress Early Warning") — `api/main.py` alone used two. The UI and docs now use one. The package name stays deliberately different and must not be renamed. Committed `.pptx`/`.pdf` files are left alone and renamed when next regenerated. |
 
 ---
