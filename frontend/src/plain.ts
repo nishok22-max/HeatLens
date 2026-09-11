@@ -100,6 +100,22 @@ export function verdictFor(metric: string, value: number): Verdict {
   }
 }
 
+/** Lower edge of each level, lowest first, matching the verdict functions
+ *  above. Used for the map legend, so legend and map can never disagree. */
+export const LEVEL_THRESHOLDS: Record<string, number[]> = {
+  utci: [-Infinity, 26, 32, 38, 46],
+  wbgt: [-Infinity, 28, 30, 32, 35],
+  air_temp: [-Infinity, 33, 38, 42, 45],
+  risk: [-Infinity, 0.021, 0.15, 0.3, 0.45],
+};
+
+export function levelBands(metric: string): { from: number; verdict: Verdict }[] {
+  return (LEVEL_THRESHOLDS[metric] ?? LEVEL_THRESHOLDS.utci).map((from) => ({
+    from,
+    verdict: verdictFor(metric, Number.isFinite(from) ? from : -1e6),
+  }));
+}
+
 /** "28% above the safe limit" reads; "1.28×" does not. */
 export function strainPhrase(ratio: number): string {
   const pct = Math.round(Math.abs(ratio - 1) * 100);

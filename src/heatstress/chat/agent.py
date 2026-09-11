@@ -53,6 +53,23 @@ CORE RULES (non-negotiable):
 5. If a tool returns an error, say so clearly and offer an alternative.
 6. Be concise. Municipal officers and health workers need facts, not essays.
 
+GENERAL HEALTH KNOWLEDGE (when no tool covers the topic):
+- If the user asks a general physiology, first-aid, or public-health question
+  that the HeatLens data tools do not cover (e.g. "what happens if I drink
+  cold water vs normal water in extreme heat?"), you MUST answer using your
+  general medical and physiological training knowledge. Do NOT refuse or say
+  the model cannot estimate it — just answer the health question directly.
+- You MUST clearly prefix such sections with:
+    ⚕️ General Health Advice (not from HeatLens data):
+- Still anchor the response to the current heat context where possible:
+  call get_city_summary or get_advisory first to fetch the zone UTCI/WBGT,
+  then weave that context into your health explanation.
+- Do not invent any numbers; if you cite a temperature figure it must come
+  from a tool return. Qualitative physiological descriptions (e.g. "cold
+  water causes rapid vasoconstriction") are fine without a tool source.
+- Keep it actionable and practical — health workers and citizens need clear
+  advice, not academic hedging.
+
 STYLE:
 - Use °C for temperatures.
 - Name the tool you used (e.g. "According to the work-safety window…").
@@ -105,6 +122,8 @@ def run_agent(
     dataset: str = "historical",
     provider: LLMProvider | None = None,
     payload: dict | None = None,
+    system_core: str | None = None,
+    tools: list[dict] | None = None,
 ) -> AgentResponse:
     """Run the full chat agent and return a grounded response.
 
@@ -113,7 +132,11 @@ def run_agent(
         dataset:  'historical' | 'live' — which baked payload to load.
         provider: LLM backend.  Defaults to whatever get_provider() returns.
         payload:  Pre-loaded live_cache dict (avoids re-reading disk in the API).
+        system_core: Replaces the default system prompt (the what-if agent
+                  uses a stricter, decision-focused one). Guards still apply.
+        tools:    Restricts which tools the model may call. Defaults to all.
     """
+    tool_specs = TOOL_SPECS if tools is None else tools
     # --- lazy provider ---
     if provider is None:
         from .provider import get_provider
@@ -146,7 +169,7 @@ def run_agent(
         context_block = ""
 
     # 3. Build system prompt.
-    system = _SYSTEM_CORE
+    system = system_core or _SYSTEM_CORE
     if context_block:
         system += (
             "\n\nRELEVANT BACKGROUND (from project documents):\n"
@@ -165,7 +188,7 @@ def run_agent(
         rounds += 1
         response = provider.chat(
             messages=messages,
-            tools=TOOL_SPECS,
+            tools=tool_specs,
             system=system,
         )
 
@@ -183,6 +206,7 @@ def run_agent(
                 role="assistant",
                 content=response.text,
                 tool_calls=response.tool_calls,
+                raw_parts=response.raw_parts,
             )
         )
 
@@ -252,6 +276,114 @@ def run_agent(
         ungrounded_numbers=ungrounded,
         rounds=rounds,
     )
+
+
+# ---------------------------------------------------------------------------
+# What-if decision agent
+#
+# Same loop, same guards (refusal table first, numeric guard last), but a
+# narrower job: turn any wording of a heat-response question into the levers
+# the physics models, compare them, and recommend. Scope is enforced twice --
+# the prompt asks for a sentinel on off-topic questions, and the sentinel is
+# swapped for a fixed reply here, so no off-topic prose ever reaches the UI.
+# ---------------------------------------------------------------------------
+
+OUT_OF_SCOPE_TOKEN = "[[OUT_OF_SCOPE]]"
+
+OUT_OF_SCOPE_REPLY = (
+    "I can only help with heat-stress decisions for this city using HeatLens "
+    "data. Try something like \"Should we shade work sites or move shifts "
+    "earlier for construction workers?\" or \"Which neighbourhoods need relief "
+    "first, and what would help most?\""
+)
+
+WHATIF_TOOL_NAMES = (
+    "simulate_intervention", "list_intervention_options", "get_hottest_zones",
+    "get_insights", "get_work_safety_window", "get_city_summary",
+    "get_exposure_response", "get_metadata",
+)
+
+WHATIF_SUGGESTED = [
+    "We can afford only one measure this week. What protects construction workers most?",
+    "Is tarpaulin over work sites better than planting trees?",
+    "Delivery riders start at 9. What if they started at dawn instead?",
+    "Which neighbourhoods should get relief first, and what would help there?",
+    "Combine the best shade and the best shift. How much safer is that?",
+]
+
+_WHATIF_SYSTEM = f"""
+You are the HeatLens Decision Assistant. You help municipal officials, health
+officers and labour inspectors decide what to do about heat stress in the city
+covered by the HeatLens data, using ONLY that model.
+
+SCOPE (strict):
+- Answer only questions about heat stress, heatwave preparedness and response,
+  outdoor-work safety, public-health advisories, and the interventions HeatLens
+  models, for this city.
+- If the question is about anything else (general knowledge, coding, sport,
+  politics, other cities, personal matters), reply with exactly
+  {OUT_OF_SCOPE_TOKEN} and nothing else.
+
+HOW TO ANSWER:
+1. Always call tools before answering. For any what-if, comparison or "what
+   should we do" question, call simulate_intervention once per option, or
+   list_intervention_options to compare everything. For "where", call
+   get_hottest_zones.
+2. Map loose wording onto the modelled levers: tarps, canopies, covering sites
+   -> shade_pct; trees, parks, green roofs -> greening_pct; start earlier,
+   dawn shifts, split shift -> shift_start_hour; riders -> delivery;
+   labourers, builders -> construction; school -> child; old people -> elderly.
+   If no amount is given, compare a low and a high value.
+3. If the question asks about something HeatLens does not model (cooling
+   centres, water stations, air conditioning, power grid, hospital beds), say
+   so plainly, offer the closest modelled lever if it helps, and put any
+   general advice under "Not modelled by HeatLens:" with no numbers.
+4. Every number must come from a tool return. Never estimate, interpolate or
+   invent a figure. If a value was snapped to the grid, say so.
+5. Never give death or hospital-admission counts: risk is relative. Never say
+   "validated".
+
+FORMAT (markdown, short, for a busy official):
+**Recommendation:** one or two sentences stating the decision.
+**Evidence:** 2-4 bullets, each a modelled before -> after figure.
+**Trade-offs:** 1-3 bullets on cost and feasibility, from the tool data.
+**Limits:** one line on what this does not cover, only if relevant.
+""".strip()
+
+
+@dataclass
+class WhatIfAgentResponse:
+    agent: AgentResponse
+    scenarios: list[dict] = field(default_factory=list)
+    out_of_scope: bool = False
+
+
+def run_whatif_agent(
+    question: str,
+    dataset: str = "historical",
+    provider: LLMProvider | None = None,
+    payload: dict | None = None,
+) -> WhatIfAgentResponse:
+    """Answer a free-form what-if as a grounded, decision-focused recommendation."""
+    tools = [s for s in TOOL_SPECS if s["function"]["name"] in WHATIF_TOOL_NAMES]
+    result = run_agent(question, dataset=dataset, provider=provider,
+                       payload=payload, system_core=_WHATIF_SYSTEM, tools=tools)
+
+    if OUT_OF_SCOPE_TOKEN in (result.answer or ""):
+        result.answer = OUT_OF_SCOPE_REPLY
+        result.refused = True
+        result.refusal_reason = "out_of_scope"
+        result.guard_passed = True
+        result.ungrounded_numbers = []
+        return WhatIfAgentResponse(agent=result, out_of_scope=True)
+
+    scenarios = [
+        {k: v for k, v in t.result.items() if not k.startswith("_")}
+        for t in result.tool_trace
+        if t.name == "simulate_intervention"
+        and isinstance(t.result, dict) and "error" not in t.result
+    ]
+    return WhatIfAgentResponse(agent=result, scenarios=scenarios)
 
 
 def _last_text(messages: list[LLMMessage]) -> str:

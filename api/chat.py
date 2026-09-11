@@ -149,3 +149,60 @@ def suggested_questions():
     """Return the list of suggested starter questions for the UI."""
     from heatstress.chat.agent import SUGGESTED_QUESTIONS
     return {"questions": SUGGESTED_QUESTIONS}
+
+
+class WhatIfApiResponse(ChatResponse):
+    scenarios: list[dict]
+    out_of_scope: bool
+    model: str
+
+
+@router.post("/whatif", response_model=WhatIfApiResponse)
+async def whatif(req: ChatRequest):
+    """Free-form what-if, answered as a grounded recommendation.
+
+    Same guarantees as /api/chat -- refusal table first, numeric guard last --
+    plus a strict project-only scope. ``scenarios`` carries the grid rows the
+    answer was built from, so the UI can draw them as before/after cards
+    instead of trusting the prose.
+    """
+    import asyncio
+
+    if req.dataset not in ("historical", "live"):
+        raise HTTPException(status_code=400,
+                            detail="dataset must be 'historical' or 'live'.")
+
+    provider = _get_provider()
+    payload = _live_cache if req.dataset == "live" else None
+    try:
+        from heatstress.chat.agent import run_whatif_agent
+        out = await asyncio.to_thread(
+            run_whatif_agent, question=req.question, dataset=req.dataset,
+            provider=provider, payload=payload,
+        )
+    except Exception as exc:
+        log.exception("What-if agent error for question %r", req.question)
+        raise HTTPException(status_code=500, detail=f"Agent error: {exc}")
+
+    r = out.agent
+    return WhatIfApiResponse(
+        answer=r.answer,
+        tool_trace=[ToolTraceItem(name=t.name, args=t.args, source=t.source)
+                    for t in r.tool_trace],
+        sources=r.sources,
+        refused=r.refused,
+        refusal_reason=r.refusal_reason,
+        guard_passed=r.guard_passed,
+        ungrounded_numbers=r.ungrounded_numbers,
+        rounds=r.rounds,
+        scenarios=out.scenarios,
+        out_of_scope=out.out_of_scope,
+        model=getattr(provider, "model_name", "unknown"),
+    )
+
+
+@router.get("/whatif/questions")
+def whatif_questions():
+    """Starter questions for the decision assistant."""
+    from heatstress.chat.agent import WHATIF_SUGGESTED
+    return {"questions": WHATIF_SUGGESTED}

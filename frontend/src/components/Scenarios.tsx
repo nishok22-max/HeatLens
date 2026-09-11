@@ -9,8 +9,8 @@ export function Scenarios({ insights }: { insights: Insights }) {
 
   return (
     <Panel
-      title="WHAT IF WE ACT? (INTERVENTION SIMULATION)"
-      subtitle="Every scenario below is physically recomputed through the thermal model — no guessed estimates"
+      title="Intervention options"
+      subtitle="Each option re-run through the heat model and compared with doing nothing"
     >
       <div className="grid md:grid-cols-3 gap-4">
         {insights.scenarios.map((s) => {

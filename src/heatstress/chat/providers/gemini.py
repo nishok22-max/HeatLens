@@ -24,7 +24,7 @@ _DEFAULT_MODEL = "gemini-2.0-flash"
 class GeminiProvider(LLMProvider):
     """Google Gemini backend via the google-generativeai SDK."""
 
-    def __init__(self, model: str = _DEFAULT_MODEL):
+    def __init__(self, model: str | None = None):
         import google.generativeai as genai
 
         api_key = os.getenv("GEMINI_API_KEY", "")
@@ -35,7 +35,7 @@ class GeminiProvider(LLMProvider):
             )
         genai.configure(api_key=api_key)
         self._genai = genai
-        self._model_name = model
+        self._model_name = model or os.getenv("GEMINI_MODEL", _DEFAULT_MODEL)
 
     @property
     def model_name(self) -> str:
@@ -148,18 +148,21 @@ class GeminiProvider(LLMProvider):
                     {"role": "user", "parts": [{"text": msg.content}]}
                 )
             elif msg.role == "assistant":
-                parts = []
-                if msg.content:
-                    parts.append({"text": msg.content})
-                for tc in msg.tool_calls:
-                    parts.append({
-                        "function_call": {
-                            "name": tc.name,
-                            "args": tc.args,
-                        }
-                    })
-                if parts:
-                    gemini_contents.append({"role": "model", "parts": parts})
+                if msg.raw_parts:
+                    gemini_contents.append({"role": "model", "parts": msg.raw_parts})
+                else:
+                    parts = []
+                    if msg.content:
+                        parts.append({"text": msg.content})
+                    for tc in msg.tool_calls:
+                        parts.append({
+                            "function_call": {
+                                "name": tc.name,
+                                "args": tc.args,
+                            }
+                        })
+                    if parts:
+                        gemini_contents.append({"role": "model", "parts": parts})
             elif msg.role == "tool" and msg.tool_name:
                 result = msg.tool_result
                 if not isinstance(result, dict):
@@ -204,4 +207,5 @@ class GeminiProvider(LLMProvider):
             text="\n".join(text_parts) or None,
             tool_calls=tool_calls,
             stop_reason=stop_reason,
+            raw_parts=candidate.content.parts,
         )

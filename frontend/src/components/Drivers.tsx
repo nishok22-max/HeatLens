@@ -31,8 +31,8 @@ export function Drivers({ insights }: { insights: Insights }) {
 
   return (
     <Panel
-      title="WHAT IS DRIVING THE HEAT?"
-      subtitle="Relative contribution of current environmental & physical risk drivers"
+      title="What is driving the heat?"
+      subtitle="How much each part of the weather adds to the heat people feel"
     >
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <div className="relative shrink-0">

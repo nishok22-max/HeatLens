@@ -39,12 +39,12 @@ export type DatasetKey = "historical" | "live";
 
 export const DATASET_META: Record<DatasetKey, { label: string; sub: string }> = {
   historical: {
-    label: "May 2010 heatwave",
-    sub: "the event that killed ~1,344 people",
+    label: "May 2010 replay",
+    sub: "est. ~1,344 excess deaths",
   },
   live: {
-    label: "Forecast",
-    sub: "now and the next few days",
+    label: "Live forecast",
+    sub: "today and the days ahead",
   },
 };
 

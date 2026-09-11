@@ -13,8 +13,8 @@ export function IndexComparison({ data }: { data: HeatData }) {
 
   return (
     <Panel
-      title="THE SAME CITY, MEASURED THREE WAYS"
-      subtitle="Comparing how heat disparity between neighbourhoods is amplified or masked by different indices"
+      title="The same city, measured three ways"
+      subtitle="How big the gap between neighbourhoods looks depends on which measure you use"
     >
       <div className="space-y-4">
         {rows.map((r) => (
