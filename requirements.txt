@@ -31,3 +31,13 @@ earthengine-api>=0.1.390
 # --- api backend ---
 fastapi>=0.110.0
 uvicorn>=0.28.0
+
+# --- chat agent (Phase 5G) ---
+# google-generativeai: Gemini function-calling backend. Swap for groq etc.
+# via the provider abstraction in src/heatstress/chat/provider.py.
+google-generativeai>=0.8
+# model2vec: local dense embeddings for doc retrieval (~30 MB, no GPU, no
+# network call). The agent rebuilds the index from scratch if needed.
+model2vec>=0.3
+# python-dotenv: already installed; listed here for explicit tracking.
+python-dotenv>=1.0

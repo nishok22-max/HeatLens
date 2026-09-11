@@ -20,6 +20,7 @@ import { AdvisoryPanel } from "./components/AdvisoryPanel";
 import { ProvenancePanel } from "./components/ProvenancePanel";
 import { Explainer } from "./components/Explainer";
 import { Panel } from "./components/ui";
+import { ChatPanel } from "./components/ChatPanel";
 import { checkBackendHealth, fetchHeatDataFromAPI } from "./api";
 
 export default function App() {
@@ -523,6 +524,9 @@ export default function App() {
         </div>
       )}
     </AppShell>
+
+    {/* Phase 5G — chat agent, hides itself when backend is unreachable (D16) */}
+    <ChatPanel backendConnected={backendConnected} dataset={dataset} />
   );
 }
 
