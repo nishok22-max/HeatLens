@@ -24,7 +24,7 @@ This document describes the system **as it actually is**, and marks clearly anyw
 | PS-5 | Demographics — elderly / outdoor-worker density | **L4** | `vulnerability.py`; Phase 5E adds population counts with no age split — §9 | ⚠️🚧 |
 | PS-6 | Localized weather data | **L1** | `sources/openmeteo.py` — past and forecast, with unit checks | ✅ |
 | PS-7 | Predict spikes **3–5 days ahead** | **L1→L3** | 6-day forecast through the same physics; `live.py` republishes — §3, §4 | ⚠️ lead time ✅, heat stress ✅, death counts ⬜ |
-| PS-8 | High-resolution, hyper-local (zone / ward) | **L1** | `spatial.py` — 392 zones at 0.693 km²; `03_place_names.py` names them. Phase 5 measures the pattern from satellite — §9 | ✅ |
+| PS-8 | High-resolution, hyper-local (zone / ward) | **L1** | `spatial.py` — 392 zones at 0.693 km²; `03_place_names.py` names them. The pattern is **measured** from MODIS at 1 km (`sources/modis_ornl.py`), Landsat at 30 m one flag away — §9, D20 | ✅ |
 | PS-9 | Dynamic colour-coded map dashboard | **L5** | `frontend/` — hand-built SVG map; MapLibre was removed (D17) — §3 | ✅ |
 | PS-10 | Actionable automated public health advisories | **L5** | `advisory.py` (text + CAP), `insight.py` (causes, scenarios, actions) | ✅ |
 | PS-11 | **API** able to push SMS/WhatsApp alerts | **L5** | `api/main.py` — 26 read routes (D16); CAP message valid; **send switched off on purpose. PRD §3.2** | ⚠️ |
@@ -45,7 +45,8 @@ flowchart LR
     direction TB
     OM["Open-Meteo<br/>past weather + live forecast"]
     OSM["OpenStreetMap<br/>via Overpass API"]
-    GEE["Earth Engine (Phase 5)<br/>Landsat 8/9 ST_B10 · GHS-POP"]
+    SAT["ORNL DAAC · no credential<br/>MODIS Aqua LST day + night<br/>Terra as independent check"]
+    GEE["Earth Engine (optional upgrade)<br/>Landsat 8/9 ST_B10 · GHS-POP"]
     STD["Published standards<br/>ISO 7243 · ACGIH · CAP 1.2"]
   end
 
@@ -68,8 +69,9 @@ flowchart LR
 
   OM --> L1
   OSM --> L1
-  GEE -.Phase 5.-> L1
-  GEE -.Phase 5.-> L4
+  SAT --> L1
+  GEE -.30 m upgrade.-> L1
+  GEE -.Phase 5E.-> L4
   STD --> L3
   L5 --> MAP
   L5 --> OFF
@@ -90,10 +92,10 @@ flowchart TD
   RHc["RH · city level"]
   WS["wind 10 m"]
   GHI["GHI · direct · diffuse"]
-  UF["urban form per cell<br/>roads · green · water"]
+  UF["satellite LST per zone<br/>MODIS Aqua, 21 composites"]
 
-  UF --> INT["intensity 0-1<br/>percentile scaled"]
-  INT --> DTA["dTa = amplitude x<br/>intensity - mean"]
+  UF --> INT["anomaly = zone - city mean<br/>MEASURED"]
+  INT --> DTA["dTa = alpha x anomaly<br/>alpha = 0.40, assumed"]
   Ta --> TAH["Ta_cell"]
   DTA --> TAH
 
@@ -350,10 +352,16 @@ scripts/               00 placeholder form · 02 urban form · 03 place names ·
                        04 indices · 05 kill gate · 06 bake web · 07 live ·
                        08 live scheduler
 
-Planned in Phase 5 (§9):
-  sources/gee.py       Earth Engine: Landsat temperature, greenness, population
+Built in Phase 5A–5B:
+  killgate.py          verdict() pulled out of script 05, now tested against
+                       the committed arrays (16 tests)
+  sources/gee.py       Earth Engine: Landsat temperature, greenness, built
+                       surface, population, MODIS rank check. Initialised
+                       inside a function, cached per chunk, units asserted
+  scripts/01           satellite export -- runs once Earth Engine is authorised
+
+Still planned in Phase 5 (§9):
   downscale.py         Ridge fit, spatial block CV, conformal intervals, predict
-  killgate.py          verdict() pulled out of script 05 so it can be tested
   siting.py            greedy best-coverage cooling-centre placement
   api/chat.py          tool-calling agent, numeric guard, refusal table (FR-23)
   scripts/01, 11, 12   satellite export · fit model · apply offsets
@@ -362,7 +370,7 @@ Planned in Phase 5 (§9):
 
 ### 5.1 Every number computed twice, on purpose
 
-Each headline index is calculated two independent ways: once by our own code written straight from the published equations, and once by `thermofeel`, the European weather centre's operational library. The test suite compares them (**181 tests**).
+Each headline index is calculated two independent ways: once by our own code written straight from the published equations, and once by `thermofeel`, the European weather centre's operational library. The test suite compares them (**323 tests**).
 
 | quantity | ours | reference | agreement |
 |---|---|---|---|
@@ -387,8 +395,10 @@ A decision log is only worth keeping if reversals stay visible. Two entries belo
 | **D14** Observed satellite temperature for the pattern; the model only for gaps, error bars and what-if | Accepted 🚧 |
 | **D16** FastAPI added, but never something the demo depends on | Accepted |
 | **D19** The chatbot answers from tools, never from recall | Accepted 🚧 |
+| **D20** Ship the measured pattern on MODIS at 1 km now, rather than wait for Landsat | Accepted |
+| **D23** The what-if box parses; it never generates | Accepted |
 
-**All nineteen decisions, with their status and the date each was recorded, are
+**All twenty-four decisions, with their status and the date each was recorded, are
 in [`DECISIONS.md`](DECISIONS.md)** — including the two that were overtaken.
 D2 and D3 are marked rather than deleted, because the reason a choice was right
 at the time is exactly what you need in order to judge the reversal.

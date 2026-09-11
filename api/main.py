@@ -89,7 +89,9 @@ def health():
     """
     return {
         "status": "ok",
-        "server": "HEATSHIELD Thermal Intelligence API",
+        # One product name (D18). This line survived the rename pass because it
+        # is a string in a health payload rather than anything the UI renders.
+        "server": "HeatLens Thermal Intelligence API",
         "version": app.version,
         "city": _city_name(),
         "live_refreshed_at": (

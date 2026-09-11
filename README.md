@@ -7,9 +7,11 @@
 SIH problem statement: *Extreme Heatwave Early Warning and Human Thermal Stress Index*.
 
 HeatLens computes WBGT (Liljegren), UTCI and the NOAA Heat Index for every H3
-cell in a city, downscaled by urban form derived from OpenStreetMap. It ships
-181 tests that validate the physics against published reference values, and the
-whole demo runs offline from a single self-contained HTML file.
+cell in a city, downscaled by **satellite land-surface temperature** — MODIS
+Aqua, 21 pre-monsoon composites from 2023–2025, measured per zone rather than
+inferred from a formula. It ships 323 tests that validate the physics against
+published reference values, and the whole demo runs offline from a single
+self-contained HTML file.
 
 > **Before quoting any number from this project**, read
 > [Read this before quoting any number](#read-this-before-quoting-any-number).
@@ -33,7 +35,7 @@ cd <repo>
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Expect **181 passed**. This is the credibility artefact — it validates the
+Expect **323 passed**. This is the credibility artefact — it validates the
 physics against published reference values (NOAA Heat Index chart, ISO 7243
 limits, Stull's own worked example) *and* cross-checks our from-scratch
 implementations against `thermofeel`, ECMWF's operational library.
@@ -56,7 +58,9 @@ implementations against `thermofeel`, ECMWF's operational library.
 
 | step | script | does | writes |
 |---|---|---|---|
-| 2 | `02_urban_form.py` | H3 grid over the city; fetches roads / green / water from OpenStreetMap; derives per-cell temperature offsets | `data/processed/urban_form_<city>.json` |
+| 1 | `01_satellite_lst.py` | **Measures the heat pattern.** MODIS Aqua day + night surface temperature per zone from ORNL DAAC (no credential needed), with a Terra cross-check | `data/processed/satellite_<city>.json` |
+| 2 | `02_urban_form.py` | *Superseded.* H3 grid; roads / green / water from OpenStreetMap; the older, assumed pattern, kept for the before/after comparison | `data/processed/urban_form_<city>.json` |
+| 12 | `12_downscaled_offsets.py` | Turns the measured anomaly into per-zone air-temperature offsets: `dTa = alpha x anomaly` | `data/processed/urban_form_lst_<city>.json` |
 | 4 | `04_compute_indices.py` | Applies the physics graph to every cell-hour: WBGT (Liljegren), UTCI, Heat Index, risk | `data/processed/indices_<city>.npz` |
 | 5 | `05_kill_gate.py` | **The decision script.** Reports intra-city spread, the WBGT-damping finding, and a sensitivity sweep over the assumed UHI amplitude | stdout only |
 | 6 | `06_bake_web.py` | Bakes static assets for the frontend | `web/data/*.json`, `web/data/hexes.geojson` |
@@ -252,9 +256,13 @@ thresholds do not need retuning per city.
 `web/data/meta.json` carries a `status` on every layer. Three of them are **not**
 measured:
 
-- **UHI amplitude is ASSUMED** (3.0 °C, a literature value). The spatial
-  *pattern* comes from real OpenStreetMap urban form, but the *magnitude* does
-  not. Present the sensitivity sweep from step 5 alongside any spread figure.
+- **The surface-to-air conversion is ASSUMED** (`alpha = 0.40`, a literature
+  value). Which zones are hotter is now *measured* from satellite surface
+  temperature; what stays estimated is how much of a surface-temperature
+  difference reaches the air a person breathes. Fitting `alpha` needs ground
+  weather stations across the city, which do not exist here. Surface UHI is
+  several times larger than air UHI — never quote one as the other. Present the
+  sweep over `alpha_range` alongside any spread figure.
 - **Vulnerability is a declared PLACEHOLDER.** No ward-level demographics were
   obtainable, so it is a city-wide constant and does not vary between
   neighbourhoods — meaning risk variation is driven almost entirely by hazard.

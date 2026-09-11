@@ -7,6 +7,7 @@ unverified translations are still flagged. Those properties are exactly the ones
 that quietly rot when someone later "cleans up" the code.
 """
 
+import inspect
 import json
 
 import numpy as np
@@ -94,6 +95,52 @@ class TestUrbanHeatOffset:
         )
         composite = form.composite(cells)
         assert composite[0] > composite[1], "green cover must cool a cell"
+
+
+class TestLayerCoverage:
+    """A layer with no coverage contributes nothing whatever its weight.
+
+    On the shipped Ahmedabad surface ``built`` -- the largest weight in the
+    formula -- is 0.0 in every zone, so what is really being mapped is road
+    density. That is a real defect, and these tests exist so it stays visible
+    in the output instead of living in a docstring nobody reads.
+    """
+
+    CELLS = ["a", "b"]
+
+    def _form(self, built):
+        return sp.UrbanIntensity(
+            built={"a": built, "b": built}, roads={"a": 0.8, "b": 0.2},
+            green={"a": 0.0, "b": 0.5}, water={"a": 0.0, "b": 0.0})
+
+    def test_an_empty_layer_is_reported_dead(self):
+        report = self._form(0.0).coverage(self.CELLS)
+        assert report["built"]["dead"] is True
+        assert report["built"]["effective_weight"] == 0.0
+        assert report["roads"]["dead"] is False
+
+    def test_a_populated_layer_carries_its_full_weight(self):
+        report = self._form(0.6).coverage(self.CELLS)
+        assert report["built"]["effective_weight"] == \
+               sp.COMPOSITE_WEIGHTS["built"]
+        assert report["built"]["covered_fraction"] == 1.0
+
+    def test_partial_coverage_is_a_fraction_not_a_flag(self):
+        """water is non-zero in 29% of real zones -- thin, but not dead."""
+        report = self._form(0.5).coverage(self.CELLS)
+        assert report["green"]["covered_fraction"] == 0.5
+        assert report["green"]["dead"] is False
+
+    def test_the_formatted_report_names_the_dead_layer_out_loud(self):
+        text = sp.format_coverage(self._form(0.0).coverage(self.CELLS))
+        assert "built" in text and "DEAD" in text
+
+    def test_weights_match_the_formula_they_describe(self):
+        """If someone retunes composite() and not this table, they diverge."""
+        source = inspect.getsource(sp.UrbanIntensity.composite)
+        for name, weight in sp.COMPOSITE_WEIGHTS.items():
+            assert f"{weight:.2f} * {name}" in source, \
+                f"{name} weight {weight} is not the one composite() applies"
 
 
 class TestExposureResponse:

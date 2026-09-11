@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import numpy as np
 import yaml
 
+from heatstress import killgate as kg
 from heatstress import psychro as ps
 from heatstress import risk as rk
 from heatstress import solar as so
@@ -47,7 +48,7 @@ def main(config_path: str) -> None:
                    allow_pickle=False)
     timestamps = cube["timestamps_ist"]
     focus = f"{hind['focus_date']} {hind['focus_hour_ist']:02d}"
-    idx = next(i for i, t in enumerate(timestamps) if str(t).startswith(focus))
+    idx = kg.focus_index(timestamps, hind["focus_date"], hind["focus_hour_ist"])
 
     print(RULE)
     print(f"KILL GATE -- {city['name']}, {focus}:00 IST")
@@ -125,21 +126,19 @@ def main(config_path: str) -> None:
               f"{np.ptp(utci):8.2f} {np.ptp(hazard):8.3f}{mark}")
 
     # -- verdict ----------------------------------------------------------
+    # The decision itself lives in heatstress.killgate and is tested against
+    # the committed arrays, so a change to the urban-heat offset cannot flip
+    # it unnoticed. This script only prints what that function returns.
     print(f"\n{RULE}\nVERDICT\n{RULE}")
-    best = max(d_wbgt, d_utci)
-    driver = "UTCI" if d_utci >= d_wbgt else "WBGT"
-    print(f"  Strongest thermal-stress spread: {best:.2f} C  (on {driver})")
-    print(f"  Thresholds -- proceed >= {gate['proceed_spread_c']}, "
-          f"pivot < {gate['pivot_spread_c']}")
-    if best >= gate["proceed_spread_c"]:
-        print("\n  >>> PROCEED. Geography is the story; lead with the map.")
-    elif best >= gate["pivot_spread_c"]:
-        print("\n  >>> MARGINAL. Real but not dramatic. Lead with humidity +")
-        print("      physiology; keep the map as support, not as the headline.")
-    else:
-        print("\n  >>> PIVOT. The spatial premise is too weak to lead with.")
-        print("      Fall back to 'same place, different bodies': persona")
-        print("      divergence and the night-recovery chart.")
+    result = kg.verdict(d_wbgt, d_utci, gate["proceed_spread_c"],
+                        gate["pivot_spread_c"])
+    print(f"  Strongest thermal-stress spread: {result.spread_c:.2f} C  "
+          f"(on {result.driver})")
+    print(f"  Thresholds -- proceed >= {result.proceed_spread_c}, "
+          f"pivot < {result.pivot_spread_c}")
+    print(f"\n  >>> {result.decision}. {result.headline}")
+    print(f"      margin {result.margin_c:+.2f} C against the threshold it "
+          f"was scored on")
     print(f"\n{RULE}")
 
 
