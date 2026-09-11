@@ -2,13 +2,20 @@ import type { HeatData } from "../types";
 import type { ViewKey } from "./AppShell";
 import { Panel } from "./ui";
 
-type Tier = "measured" | "estimated" | "not_calibrated";
+type Tier = "measured" | "predicted" | "estimated" | "not_calibrated";
 
 const TIERS: Record<Tier, { title: string; body: string; dot: string }> = {
   measured: {
-    title: "Measured or published",
-    body: "Taken from real observations or international standards.",
+    title: "Measured, computed or published",
+    body:
+      "Taken from real observations, international standards, or calculated " +
+      "from published equations and checked against a second implementation.",
     dot: "var(--color-ok)",
+  },
+  predicted: {
+    title: "Forecast",
+    body: "A prediction for the days ahead. It changes every time we refresh.",
+    dot: "var(--color-accent)",
   },
   estimated: {
     title: "Estimated",
@@ -25,19 +32,27 @@ const TIERS: Record<Tier, { title: string; body: string; dot: string }> = {
 function tierOf(status: string): Tier {
   const s = status.toLowerCase();
   if (s.includes("not calibrated")) return "not_calibrated";
-  if (s.startsWith("measured") || s.startsWith("published")) return "measured";
+  if (s.startsWith("predicted")) return "predicted";
+  if (s.startsWith("measured") || s.startsWith("published") || s.startsWith("computed"))
+    return "measured";
   return "estimated";
 }
 
-/** The provenance table, reduced to three plain answers. Built from
- *  meta.provenance, so it changes when the data does. */
+/** The provenance table, reduced to a few plain answers. Built from
+ *  meta.provenance, so it changes when the data does. Empty tiers are dropped
+ *  below, so the hindcast shows three and the live forecast shows four. */
 export function TrustCard({ data, onNavigate }: { data: HeatData; onNavigate: (v: ViewKey) => void }) {
-  const groups: Record<Tier, string[]> = { measured: [], estimated: [], not_calibrated: [] };
+  const groups: Record<Tier, string[]> = {
+    measured: [],
+    predicted: [],
+    estimated: [],
+    not_calibrated: [],
+  };
   for (const p of data.meta.provenance) groups[tierOf(p.status)].push(p.plain ?? p.layer);
 
   return (
     <Panel title="How much to trust this" subtitle="Every layer of data is labelled with where it comes from">
-      <div className="grid md:grid-cols-3 gap-3">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
         {(Object.keys(TIERS) as Tier[])
           .filter((t) => groups[t].length)
           .map((t) => (

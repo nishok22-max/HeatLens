@@ -21,10 +21,7 @@ chart, without shipping the cross product of both.
 """
 import json
 import sys
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
-IST = timezone(timedelta(hours=5.5))
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -79,10 +76,6 @@ def main(config_path: str) -> None:
     place_names = (json.loads(names_path.read_text("utf-8"))["cells"]
                    if names_path.exists() else {})
 
-    vuln_path = ROOT / "data" / "processed" / f"vulnerability_{slug}.json"
-    vuln_cells = (json.loads(vuln_path.read_text("utf-8"))["cells"]
-                  if vuln_path.exists() else {})
-
     focus_day = hind["focus_date"]
     day_idx = [i for i, t in enumerate(stamps) if t.startswith(focus_day)]
     focus_idx = next(i for i in day_idx
@@ -99,7 +92,6 @@ def main(config_path: str) -> None:
     props = {}
     for j, cell in enumerate(cells):
         raw = form["cells"].get(cell, {})
-        vc = vuln_cells.get(cell, {})
         props[cell] = {
             "d_ta_c": round(float(cube["d_ta"][j]), 2),
             "intensity": round(float(cube["intensity"][j]), 3),
@@ -110,9 +102,6 @@ def main(config_path: str) -> None:
             "vulnerability": round(float(cube["vulnerability"][j]), 3),
             "place": place_names.get(cell, {}).get("name"),
             "place_exact": place_names.get(cell, {}).get("exact", False),
-            "population": int(vc.get("population", 0)),
-            "elderly_pct": round(float(vc.get("elderly_pct", 0.0)) * 100, 1) if "elderly_pct" in vc else 0.0,
-            "slum_roof_pct": round(float(vc.get("slum_roof_pct", 0.0)) * 100, 1) if "slum_roof_pct" in vc else 0.0,
             "peak_hour": peak_hour[j],
             "wbgt_focus": round(float(wbgt[focus_idx, j]), 1),
             "utci_focus": round(float(utci[focus_idx, j]), 1),
@@ -244,71 +233,41 @@ def main(config_path: str) -> None:
              "status": "ASSUMED -- not fitted locally"},
         ]
 
-    row = wbgt[focus_idx]
-    urow = utci[focus_idx]
-    is_placeholder_vuln = bool(cube.get("is_placeholder_vulnerability", True))
+    # D15: exposure and vulnerability get SEPARATE rows. They are sourced
+    # differently and are at different standards, and a single row carrying
+    # both let the measured half borrow credibility from nothing.
+    exposure_measured = bool(cube["exposure_is_measured"])         if "exposure_is_measured" in cube.files else False
+    exposure_note = str(cube["exposure_provenance"])         if "exposure_provenance" in cube.files else ""
 
-    if not is_placeholder_vuln:
-        vuln_provenance_row = {
-            "layer": "vulnerability",
-            "plain": "Who lives there and how they cope",
-            "source": "Census 2011 Ward Demographics + GHS-POP + AMC Slum Surveys",
-            "resolution": "per H3 cell (elderly 60+, children 0-6, slum roofing, outdoor labor)",
-            "status": "MEASURED -- composite Heat Vulnerability Index (HVI) across 392 cells",
-        }
-        vuln_caveat_row = {
-            "plain": "Vulnerability is measured at ward level using Census 2011 demographics (elderly, infants, outdoor workers) and AMC roofing data. High-density wards with informal tin roofing and vulnerable age groups show elevated vulnerability.",
-            "technical": "Heat Vulnerability Index (HVI) computed per cell from 4 standardized Census/GHS-POP indicators with exposure weighting.",
+    if exposure_measured:
+        exposure_row = {
+            "layer": "population",
+            "plain": "How many people live there",
+            "source": exposure_note or "WorldPop",
+            "resolution": "100 m grid, summed per zone",
+            "status": "measured -- modelled residential population "
+                      "(census totals disaggregated onto a grid), not a count",
         }
     else:
-        vuln_provenance_row = {
-            "layer": "vulnerability",
-            "plain": "Who lives there and how they cope",
-            "source": "PLACEHOLDER",
-            "resolution": "city-wide constant",
-            "status": "NOT FITTED -- exposure proxied by urban intensity",
-        }
-        vuln_caveat_row = {
-            "plain": "We could not get neighbourhood-level data on who lives "
-                     "where -- age, health, housing. So the risk map currently "
-                     "reflects how hot a place is, not how vulnerable its "
-                     "residents are.",
-            "technical": "Vulnerability is a declared placeholder and does not "
-                         "vary between neighbourhoods, so risk variation is "
-                         "driven almost entirely by hazard.",
+        exposure_row = {
+            "layer": "population",
+            "plain": "How many people live there",
+            "source": "PLACEHOLDER -- per-zone intensity used as a proxy",
+            "resolution": "no population data",
+            "status": "NOT MEASURED -- proxy is a rescale of the heat pattern, "
+                      "so risk cannot reorder zones relative to hazard",
         }
 
-    def dom(arr, pad=0.04):
-        lo, hi = float(np.min(arr)), float(np.max(arr))
-        p = (hi - lo) * pad
-        return [round(lo - p, 2), round(hi + p, 2)]
-
+    row = wbgt[focus_idx]
+    urow = utci[focus_idx]
     write(OUT / "meta.json", {
-        "city": city["name"],
-        "centre": city["centre"],
-        "bbox": city["bbox"],
+        "city": city["name"], "centre": city["centre"], "bbox": city["bbox"],
         "h3_resolution": config["grid"]["h3_resolution"],
         "n_cells": len(cells),
-        "focus": {
-            "date": focus_day,
-            "hour_ist": int(hind["focus_hour_ist"]),
-        },
-        "mode": "historical",
-        "generated_at_ist": datetime.now(IST).strftime("%Y-%m-%d %H:%M"),
+        "focus": {"date": focus_day, "hour_ist": hind["focus_hour_ist"]},
         "event": ("May 2010 Ahmedabad heatwave -- the event that preceded India's "
                   "first Heat Action Plan. Casualty figures should be verified "
                   "against primary sources before being quoted."),
-        # Precomputed global min/max across all cells and all hours. The UI colour
-        # scales need these so that stepping through time or scrubbing the slider
-        # keeps the colours anchored to a fixed scale -- if each frame auto-scaled
-        # to its own min/max, 14:00 and 04:00 would look equally bright and the
-        # diurnal cycle would vanish.
-        "domains": {
-            "air_temp": dom(air),
-            "wbgt": dom(wbgt),
-            "utci": dom(utci),
-            "risk": dom(risk),
-        },
         "kill_gate": {
             "air_temp_spread_c": round(float(np.ptp(air[focus_idx])), 2),
             "wbgt_spread_c": round(float(np.ptp(row)), 2),
@@ -325,10 +284,15 @@ def main(config_path: str) -> None:
             *heat_pattern_rows,
             {"layer": "thermal indices", "plain": "Heat-stress calculations", "source": "thermofeel (ECMWF); "
              "WBGT by Liljegren, UTCI polynomial", "resolution": "per cell-hour",
-             "status": "measured"},
+             "status": "computed -- deterministic physics from published "
+                       "equations, cross-checked against thermofeel"},
             {"layer": "physiology", "plain": "Safe limits for the human body", "source": "ISO 7243 limits + ACGIH work-rest",
              "resolution": "per persona", "status": "published standards"},
-            vuln_provenance_row,
+            exposure_row,
+            {"layer": "vulnerability", "plain": "How well those people cope with heat",
+             "source": "PLACEHOLDER", "resolution": "city-wide constant",
+             "status": "NOT FITTED -- no ward-level age, occupation or housing "
+                       "data; identical in every zone"},
             {"layer": "health risk", "plain": "Expected health impact", "source": "literature-shaped exposure-response",
              "resolution": "relative risk only",
              "status": "NOT CALIBRATED to local health records"},
@@ -362,7 +326,15 @@ def main(config_path: str) -> None:
                     "pattern is real but the magnitude is a literature "
                     "value. See the sensitivity sweep."),
             },
-            vuln_caveat_row,
+            {
+                "plain": "We could not get neighbourhood-level data on who lives "
+                         "where -- age, health, housing. So the risk map currently "
+                         "reflects how hot a place is, not how vulnerable its "
+                         "residents are.",
+                "technical": "Vulnerability is a declared placeholder and does not "
+                             "vary between neighbourhoods, so risk variation is "
+                             "driven almost entirely by hazard.",
+            },
             {
                 "plain": "The health-risk numbers are not based on actual hospital "
                          "or death records from this city. They use published "
@@ -418,7 +390,6 @@ def main(config_path: str) -> None:
             },
         ],
         "is_placeholder_urban": bool(cube["is_placeholder_urban"]),
-        "is_placeholder_vulnerability": is_placeholder_vuln,
         "exposure_response": {
             "metric": rk.DEFAULT_WBGT_RESPONSE.metric,
             "mmt_c": rk.DEFAULT_WBGT_RESPONSE.mmt,
@@ -479,10 +450,8 @@ def main(config_path: str) -> None:
              "why": "Hydration is not a thermal quantity. Our model cannot "
                     "estimate its effect, so it is not offered as though it could."},
             {"item": "People-at-risk headcount",
-             "why": ("We have no population data and vulnerability is a declared "
-                     "placeholder. A precise headcount would be fabricated."
-                     if is_placeholder_vuln else
-                     "The What-If scenario grid simulates physical cooling and shift hours. For measured ward demographics and headcounts, consult the Chatbot population exposure tools.")},
+             "why": "We have no population data and vulnerability is a declared "
+                    "placeholder. A precise headcount would be fabricated."},
         ],
     })
 

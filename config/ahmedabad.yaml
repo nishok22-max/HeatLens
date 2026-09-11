@@ -104,8 +104,20 @@ population:
   # Free, global, and gridded: portable to any city (NFR-5), unlike Indian
   # ward-level demographics. This is residential population only -- it says
   # nothing about age or occupation, so the vulnerability row stays NOT FITTED.
-  source: JRC/GHSL/P2023A/GHS_POP
+  #
+  # TWO SOURCES, AND WHICH ONE ACTUALLY RUNS.
+  # `source`/`epoch` describe the GHS-POP layer read through Earth Engine in
+  # sources/gee.py. That path needs EE credentials, which the offline pipeline
+  # deliberately does not use -- the satellite export comes from the
+  # no-account ORNL DAAC route for the same reason.
+  # scripts/14_population.py therefore reads the same quantity from WorldPop's
+  # public zonal-statistics API: no key, JSON in and JSON out. It is also the
+  # provider the age-sex data (elderly density, FR-6a) will come from, so
+  # numerator and denominator end up from one population model rather than two.
+  source: JRC/GHSL/P2023A/GHS_POP        # Earth Engine path (sources/gee.py)
   epoch: 2020
+  worldpop_dataset: wpgppop              # credential-free path (script 14)
+  year: 2020
 
 siting:
   walk_rings: 1                     # 7 zones, ~0.9 km: a short walk in extreme heat

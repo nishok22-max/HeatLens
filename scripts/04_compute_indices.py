@@ -114,13 +114,21 @@ def main(config_path: str, urban_form_path: str | None = None) -> None:
     # -- risk -------------------------------------------------------------
     print("  composing risk...")
     hazard = rk.normalise_hazard(wbgt)
-    vuln_file = ROOT / "data" / "processed" / f"vulnerability_{slug}.json"
-    if vuln_file.exists():
-        print(f"  using measured ward vulnerability: {vuln_file.name}")
-        surface = vu.CensusWardVulnerability(vuln_file).build(cells)
-    else:
-        print("  using placeholder vulnerability")
+
+    # Exposure: measured population when script 14 has run, the old proxy
+    # otherwise. The fallback is loud on purpose -- under mode `lst` the proxy
+    # is a linear function of d_Ta, which makes risk a monotone transform of
+    # WBGT and the whole composition informationally empty (DECISIONS D15).
+    pop_exposure, pop_note = vu.load_population_exposure(ROOT, slug, cells)
+    if pop_exposure is None:
+        print(f"  exposure: PROXY (intensity) -- {pop_note}")
+        print("            risk will not reorder zones relative to hazard.")
         surface = vu.PlaceholderVulnerability().build(cells, intensity=intensity)
+    else:
+        print(f"  exposure: MEASURED population -- {pop_note}")
+        surface = vu.MeasuredPopulationVulnerability().build(
+            cells, exposure=pop_exposure, intensity=intensity,
+            provenance=pop_note)
 
     risk = vu.combine_risk(hazard,
                            np.broadcast_to(surface.exposure[None, :], ta.shape),
@@ -142,8 +150,9 @@ def main(config_path: str, urban_form_path: str | None = None) -> None:
         d_ta=d_ta.astype(np.float32), intensity=intensity.astype(np.float32),
         exposure=surface.exposure.astype(np.float32),
         vulnerability=surface.vulnerability.astype(np.float32),
+        exposure_is_measured=bool(surface.exposure_is_measured),
+        exposure_provenance=str(surface.exposure_provenance),
         is_placeholder_urban=bool(form.get("SYNTHETIC_PLACEHOLDER", False)),
-        is_placeholder_vulnerability=bool(surface.is_placeholder),
     )
 
     focus = f"{hind['focus_date']} {hind['focus_hour_ist']:02d}"

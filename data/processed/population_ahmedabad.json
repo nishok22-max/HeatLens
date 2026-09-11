@@ -1,0 +1,1986 @@
+{
+ "city": "Ahmedabad",
+ "h3_resolution": 8,
+ "method": "worldpop_zonal_api",
+ "source": {
+  "provider": "WorldPop",
+  "dataset": "wpgppop",
+  "year": 2020,
+  "api": "https://api.worldpop.org/v1/services/stats",
+  "native_resolution_m": 100,
+  "nature": "modelled residential population; census totals disaggregated onto a grid using covariates"
+ },
+ "total_population": 6159678.6,
+ "density_per_km2": {
+  "min": 154.2,
+  "p50": 20551.8,
+  "p95": 50676.3,
+  "max": 58255.4
+ },
+ "exposure_scaling": {
+  "method": "density / p95(density), clipped to [0, 1]",
+  "p95_per_km2": 50676.3
+ },
+ "cells": {
+  "8842cc6821fffff": {
+   "population": 653.5,
+   "density_per_km2": 941.0,
+   "exposure": 0.0186
+  },
+  "8842cc6823fffff": {
+   "population": 1500.0,
+   "density_per_km2": 2159.9,
+   "exposure": 0.0426
+  },
+  "8842cc6825fffff": {
+   "population": 1318.7,
+   "density_per_km2": 1899.2,
+   "exposure": 0.0375
+  },
+  "8842cc6827fffff": {
+   "population": 1791.3,
+   "density_per_km2": 2579.8,
+   "exposure": 0.0509
+  },
+  "8842cc682dfffff": {
+   "population": 1115.7,
+   "density_per_km2": 1606.7,
+   "exposure": 0.0317
+  },
+  "8842cc6901fffff": {
+   "population": 2648.4,
+   "density_per_km2": 3816.0,
+   "exposure": 0.0753
+  },
+  "8842cc6903fffff": {
+   "population": 16147.6,
+   "density_per_km2": 23266.7,
+   "exposure": 0.4591
+  },
+  "8842cc6905fffff": {
+   "population": 15022.3,
+   "density_per_km2": 21649.0,
+   "exposure": 0.4272
+  },
+  "8842cc6907fffff": {
+   "population": 26670.5,
+   "density_per_km2": 38434.7,
+   "exposure": 0.7584
+  },
+  "8842cc6909fffff": {
+   "population": 2340.6,
+   "density_per_km2": 3372.0,
+   "exposure": 0.0665
+  },
+  "8842cc690bfffff": {
+   "population": 2196.4,
+   "density_per_km2": 3164.4,
+   "exposure": 0.0624
+  },
+  "8842cc690dfffff": {
+   "population": 2024.5,
+   "density_per_km2": 2917.1,
+   "exposure": 0.0576
+  },
+  "8842cc6911fffff": {
+   "population": 16285.6,
+   "density_per_km2": 23461.4,
+   "exposure": 0.463
+  },
+  "8842cc6913fffff": {
+   "population": 25576.2,
+   "density_per_km2": 36845.1,
+   "exposure": 0.7271
+  },
+  "8842cc6915fffff": {
+   "population": 28352.9,
+   "density_per_km2": 40852.2,
+   "exposure": 0.8061
+  },
+  "8842cc6917fffff": {
+   "population": 30048.2,
+   "density_per_km2": 43294.1,
+   "exposure": 0.8543
+  },
+  "8842cc6919fffff": {
+   "population": 2313.1,
+   "density_per_km2": 3331.8,
+   "exposure": 0.0657
+  },
+  "8842cc691bfffff": {
+   "population": 4021.9,
+   "density_per_km2": 5793.1,
+   "exposure": 0.1143
+  },
+  "8842cc691dfffff": {
+   "population": 10432.3,
+   "density_per_km2": 15029.3,
+   "exposure": 0.2966
+  },
+  "8842cc6921fffff": {
+   "population": 28864.2,
+   "density_per_km2": 41609.1,
+   "exposure": 0.8211
+  },
+  "8842cc6923fffff": {
+   "population": 31832.2,
+   "density_per_km2": 45886.8,
+   "exposure": 0.9055
+  },
+  "8842cc6925fffff": {
+   "population": 31810.0,
+   "density_per_km2": 45862.7,
+   "exposure": 0.905
+  },
+  "8842cc6927fffff": {
+   "population": 37673.3,
+   "density_per_km2": 54315.4,
+   "exposure": 1.0
+  },
+  "8842cc6929fffff": {
+   "population": 31060.3,
+   "density_per_km2": 44768.6,
+   "exposure": 0.8834
+  },
+  "8842cc692bfffff": {
+   "population": 32696.7,
+   "density_per_km2": 47126.4,
+   "exposure": 0.9299
+  },
+  "8842cc692dfffff": {
+   "population": 30188.5,
+   "density_per_km2": 43518.9,
+   "exposure": 0.8588
+  },
+  "8842cc6931fffff": {
+   "population": 36178.9,
+   "density_per_km2": 52143.8,
+   "exposure": 1.0
+  },
+  "8842cc6933fffff": {
+   "population": 30454.8,
+   "density_per_km2": 43893.0,
+   "exposure": 0.8661
+  },
+  "8842cc6935fffff": {
+   "population": 22218.4,
+   "density_per_km2": 32027.8,
+   "exposure": 0.632
+  },
+  "8842cc6937fffff": {
+   "population": 32205.3,
+   "density_per_km2": 46423.1,
+   "exposure": 0.9161
+  },
+  "8842cc6939fffff": {
+   "population": 30193.0,
+   "density_per_km2": 43510.3,
+   "exposure": 0.8586
+  },
+  "8842cc693bfffff": {
+   "population": 30996.6,
+   "density_per_km2": 44667.6,
+   "exposure": 0.8814
+  },
+  "8842cc693dfffff": {
+   "population": 24346.1,
+   "density_per_km2": 35090.0,
+   "exposure": 0.6924
+  },
+  "8842cc6941fffff": {
+   "population": 2088.8,
+   "density_per_km2": 3009.0,
+   "exposure": 0.0594
+  },
+  "8842cc6943fffff": {
+   "population": 1748.9,
+   "density_per_km2": 2519.3,
+   "exposure": 0.0497
+  },
+  "8842cc6945fffff": {
+   "population": 2397.1,
+   "density_per_km2": 3453.6,
+   "exposure": 0.0682
+  },
+  "8842cc6947fffff": {
+   "population": 2379.2,
+   "density_per_km2": 3427.7,
+   "exposure": 0.0676
+  },
+  "8842cc6949fffff": {
+   "population": 2972.4,
+   "density_per_km2": 4281.2,
+   "exposure": 0.0845
+  },
+  "8842cc694bfffff": {
+   "population": 834.5,
+   "density_per_km2": 1202.0,
+   "exposure": 0.0237
+  },
+  "8842cc694dfffff": {
+   "population": 3589.2,
+   "density_per_km2": 5170.4,
+   "exposure": 0.102
+  },
+  "8842cc6951fffff": {
+   "population": 3267.4,
+   "density_per_km2": 4705.8,
+   "exposure": 0.0929
+  },
+  "8842cc6953fffff": {
+   "population": 2513.3,
+   "density_per_km2": 3619.6,
+   "exposure": 0.0714
+  },
+  "8842cc6955fffff": {
+   "population": 2997.4,
+   "density_per_km2": 4317.7,
+   "exposure": 0.0852
+  },
+  "8842cc6957fffff": {
+   "population": 3436.1,
+   "density_per_km2": 4949.5,
+   "exposure": 0.0977
+  },
+  "8842cc6959fffff": {
+   "population": 1503.5,
+   "density_per_km2": 2165.0,
+   "exposure": 0.0427
+  },
+  "8842cc695bfffff": {
+   "population": 2044.5,
+   "density_per_km2": 2944.1,
+   "exposure": 0.0581
+  },
+  "8842cc695dfffff": {
+   "population": 1662.0,
+   "density_per_km2": 2393.8,
+   "exposure": 0.0472
+  },
+  "8842cc6961fffff": {
+   "population": 4070.2,
+   "density_per_km2": 5865.9,
+   "exposure": 0.1158
+  },
+  "8842cc6963fffff": {
+   "population": 3311.6,
+   "density_per_km2": 4772.5,
+   "exposure": 0.0942
+  },
+  "8842cc6965fffff": {
+   "population": 29804.5,
+   "density_per_km2": 42960.0,
+   "exposure": 0.8477
+  },
+  "8842cc6967fffff": {
+   "population": 29472.5,
+   "density_per_km2": 42480.7,
+   "exposure": 0.8383
+  },
+  "8842cc6969fffff": {
+   "population": 3102.4,
+   "density_per_km2": 4470.5,
+   "exposure": 0.0882
+  },
+  "8842cc696bfffff": {
+   "population": 2179.2,
+   "density_per_km2": 3140.1,
+   "exposure": 0.062
+  },
+  "8842cc696dfffff": {
+   "population": 9523.0,
+   "density_per_km2": 13724.4,
+   "exposure": 0.2708
+  },
+  "8842cc69cdfffff": {
+   "population": 4145.7,
+   "density_per_km2": 5971.3,
+   "exposure": 0.1178
+  },
+  "8842cc69e9fffff": {
+   "population": 32421.8,
+   "density_per_km2": 46713.5,
+   "exposure": 0.9218
+  },
+  "8842cc69edfffff": {
+   "population": 31071.5,
+   "density_per_km2": 44774.8,
+   "exposure": 0.8835
+  },
+  "8842cc6b21fffff": {
+   "population": 3140.7,
+   "density_per_km2": 4523.0,
+   "exposure": 0.0893
+  },
+  "8842cc6b23fffff": {
+   "population": 4659.1,
+   "density_per_km2": 6709.7,
+   "exposure": 0.1324
+  },
+  "8842cc6b25fffff": {
+   "population": 4396.5,
+   "density_per_km2": 6332.5,
+   "exposure": 0.125
+  },
+  "8842cc6b27fffff": {
+   "population": 4163.6,
+   "density_per_km2": 5996.9,
+   "exposure": 0.1183
+  },
+  "8842cc6b29fffff": {
+   "population": 2130.0,
+   "density_per_km2": 3067.1,
+   "exposure": 0.0605
+  },
+  "8842cc6b2bfffff": {
+   "population": 4099.5,
+   "density_per_km2": 5902.9,
+   "exposure": 0.1165
+  },
+  "8842cc6b2dfffff": {
+   "population": 3715.4,
+   "density_per_km2": 5350.8,
+   "exposure": 0.1056
+  },
+  "8842cc6b31fffff": {
+   "population": 2752.7,
+   "density_per_km2": 3963.5,
+   "exposure": 0.0782
+  },
+  "8842cc6b33fffff": {
+   "population": 1438.8,
+   "density_per_km2": 2071.6,
+   "exposure": 0.0409
+  },
+  "8842cc6b35fffff": {
+   "population": 1759.4,
+   "density_per_km2": 2533.7,
+   "exposure": 0.05
+  },
+  "8842cc6b37fffff": {
+   "population": 887.4,
+   "density_per_km2": 1277.9,
+   "exposure": 0.0252
+  },
+  "8842cc6b3dfffff": {
+   "population": 4481.0,
+   "density_per_km2": 6452.1,
+   "exposure": 0.1273
+  },
+  "8842cc6b65fffff": {
+   "population": 1462.8,
+   "density_per_km2": 2106.3,
+   "exposure": 0.0416
+  },
+  "8842cc6b67fffff": {
+   "population": 1273.8,
+   "density_per_km2": 1834.2,
+   "exposure": 0.0362
+  },
+  "8842cc6b6dfffff": {
+   "population": 1051.3,
+   "density_per_km2": 1513.7,
+   "exposure": 0.0299
+  },
+  "8842cea281fffff": {
+   "population": 1208.8,
+   "density_per_km2": 1745.8,
+   "exposure": 0.0345
+  },
+  "8842cea283fffff": {
+   "population": 1203.9,
+   "density_per_km2": 1738.7,
+   "exposure": 0.0343
+  },
+  "8842cea285fffff": {
+   "population": 372.3,
+   "density_per_km2": 537.8,
+   "exposure": 0.0106
+  },
+  "8842cea287fffff": {
+   "population": 1022.3,
+   "density_per_km2": 1476.6,
+   "exposure": 0.0291
+  },
+  "8842cea289fffff": {
+   "population": 3425.9,
+   "density_per_km2": 4947.1,
+   "exposure": 0.0976
+  },
+  "8842cea28bfffff": {
+   "population": 1893.2,
+   "density_per_km2": 2733.8,
+   "exposure": 0.0539
+  },
+  "8842cea28dfffff": {
+   "population": 1765.2,
+   "density_per_km2": 2549.3,
+   "exposure": 0.0503
+  },
+  "8842cea291fffff": {
+   "population": 1982.9,
+   "density_per_km2": 2863.3,
+   "exposure": 0.0565
+  },
+  "8842cea293fffff": {
+   "population": 3451.0,
+   "density_per_km2": 4983.0,
+   "exposure": 0.0983
+  },
+  "8842cea295fffff": {
+   "population": 1065.9,
+   "density_per_km2": 1539.4,
+   "exposure": 0.0304
+  },
+  "8842cea297fffff": {
+   "population": 1409.3,
+   "density_per_km2": 2035.3,
+   "exposure": 0.0402
+  },
+  "8842cea299fffff": {
+   "population": 5559.4,
+   "density_per_km2": 8026.3,
+   "exposure": 0.1584
+  },
+  "8842cea29bfffff": {
+   "population": 3800.7,
+   "density_per_km2": 5487.2,
+   "exposure": 0.1083
+  },
+  "8842cea29dfffff": {
+   "population": 2363.7,
+   "density_per_km2": 3413.2,
+   "exposure": 0.0674
+  },
+  "8842cea2b9fffff": {
+   "population": 1078.0,
+   "density_per_km2": 1557.1,
+   "exposure": 0.0307
+  },
+  "8842cea2bbfffff": {
+   "population": 1044.4,
+   "density_per_km2": 1508.4,
+   "exposure": 0.0298
+  },
+  "8842cea2d1fffff": {
+   "population": 12821.5,
+   "density_per_km2": 18508.6,
+   "exposure": 0.3652
+  },
+  "8842cea2d3fffff": {
+   "population": 14347.0,
+   "density_per_km2": 20710.6,
+   "exposure": 0.4087
+  },
+  "8842cea2d5fffff": {
+   "population": 5262.6,
+   "density_per_km2": 7598.1,
+   "exposure": 0.1499
+  },
+  "8842cea2d7fffff": {
+   "population": 7759.0,
+   "density_per_km2": 11202.2,
+   "exposure": 0.2211
+  },
+  "8842cea2d9fffff": {
+   "population": 24989.7,
+   "density_per_km2": 36069.4,
+   "exposure": 0.7118
+  },
+  "8842cea2dbfffff": {
+   "population": 24155.6,
+   "density_per_km2": 34864.7,
+   "exposure": 0.688
+  },
+  "8842cea2ddfffff": {
+   "population": 16468.9,
+   "density_per_km2": 23774.4,
+   "exposure": 0.4691
+  },
+  "8842cea401fffff": {
+   "population": 30929.4,
+   "density_per_km2": 44658.6,
+   "exposure": 0.8813
+  },
+  "8842cea403fffff": {
+   "population": 17265.6,
+   "density_per_km2": 24929.1,
+   "exposure": 0.4919
+  },
+  "8842cea405fffff": {
+   "population": 28070.4,
+   "density_per_km2": 40536.8,
+   "exposure": 0.7999
+  },
+  "8842cea407fffff": {
+   "population": 24835.8,
+   "density_per_km2": 35865.1,
+   "exposure": 0.7077
+  },
+  "8842cea409fffff": {
+   "population": 34611.7,
+   "density_per_km2": 49968.4,
+   "exposure": 0.986
+  },
+  "8842cea40bfffff": {
+   "population": 22986.3,
+   "density_per_km2": 33184.5,
+   "exposure": 0.6548
+  },
+  "8842cea40dfffff": {
+   "population": 29181.5,
+   "density_per_km2": 42135.4,
+   "exposure": 0.8315
+  },
+  "8842cea411fffff": {
+   "population": 9319.4,
+   "density_per_km2": 13453.6,
+   "exposure": 0.2655
+  },
+  "8842cea415fffff": {
+   "population": 10235.7,
+   "density_per_km2": 14778.7,
+   "exposure": 0.2916
+  },
+  "8842cea419fffff": {
+   "population": 13063.7,
+   "density_per_km2": 18856.3,
+   "exposure": 0.3721
+  },
+  "8842cea41dfffff": {
+   "population": 11035.6,
+   "density_per_km2": 15931.4,
+   "exposure": 0.3144
+  },
+  "8842cea421fffff": {
+   "population": 16891.7,
+   "density_per_km2": 24400.7,
+   "exposure": 0.4815
+  },
+  "8842cea423fffff": {
+   "population": 4281.5,
+   "density_per_km2": 6184.6,
+   "exposure": 0.122
+  },
+  "8842cea429fffff": {
+   "population": 19111.1,
+   "density_per_km2": 27602.9,
+   "exposure": 0.5447
+  },
+  "8842cea42bfffff": {
+   "population": 26908.5,
+   "density_per_km2": 38864.4,
+   "exposure": 0.7669
+  },
+  "8842cea42dfffff": {
+   "population": 14822.9,
+   "density_per_km2": 21412.7,
+   "exposure": 0.4225
+  },
+  "8842cea431fffff": {
+   "population": 716.6,
+   "density_per_km2": 1035.0,
+   "exposure": 0.0204
+  },
+  "8842cea435fffff": {
+   "population": 688.7,
+   "density_per_km2": 994.8,
+   "exposure": 0.0196
+  },
+  "8842cea439fffff": {
+   "population": 9201.4,
+   "density_per_km2": 13287.5,
+   "exposure": 0.2622
+  },
+  "8842cea43bfffff": {
+   "population": 1017.9,
+   "density_per_km2": 1469.9,
+   "exposure": 0.029
+  },
+  "8842cea43dfffff": {
+   "population": 13541.7,
+   "density_per_km2": 19558.2,
+   "exposure": 0.3859
+  },
+  "8842cea441fffff": {
+   "population": 25925.0,
+   "density_per_km2": 37422.9,
+   "exposure": 0.7385
+  },
+  "8842cea443fffff": {
+   "population": 36478.8,
+   "density_per_km2": 52656.5,
+   "exposure": 1.0
+  },
+  "8842cea445fffff": {
+   "population": 30521.2,
+   "density_per_km2": 44064.5,
+   "exposure": 0.8695
+  },
+  "8842cea447fffff": {
+   "population": 33567.4,
+   "density_per_km2": 48461.6,
+   "exposure": 0.9563
+  },
+  "8842cea449fffff": {
+   "population": 20988.1,
+   "density_per_km2": 30292.2,
+   "exposure": 0.5978
+  },
+  "8842cea44bfffff": {
+   "population": 21668.2,
+   "density_per_km2": 31273.3,
+   "exposure": 0.6171
+  },
+  "8842cea44dfffff": {
+   "population": 19718.3,
+   "density_per_km2": 28463.9,
+   "exposure": 0.5617
+  },
+  "8842cea451fffff": {
+   "population": 28614.8,
+   "density_per_km2": 41297.9,
+   "exposure": 0.8149
+  },
+  "8842cea453fffff": {
+   "population": 19013.3,
+   "density_per_km2": 27440.2,
+   "exposure": 0.5415
+  },
+  "8842cea455fffff": {
+   "population": 30941.4,
+   "density_per_km2": 44662.6,
+   "exposure": 0.8813
+  },
+  "8842cea457fffff": {
+   "population": 14128.2,
+   "density_per_km2": 20393.1,
+   "exposure": 0.4024
+  },
+  "8842cea459fffff": {
+   "population": 20592.8,
+   "density_per_km2": 29716.1,
+   "exposure": 0.5864
+  },
+  "8842cea45bfffff": {
+   "population": 29503.4,
+   "density_per_km2": 42573.7,
+   "exposure": 0.8401
+  },
+  "8842cea45dfffff": {
+   "population": 23649.8,
+   "density_per_km2": 34132.6,
+   "exposure": 0.6735
+  },
+  "8842cea461fffff": {
+   "population": 26820.4,
+   "density_per_km2": 38733.0,
+   "exposure": 0.7643
+  },
+  "8842cea463fffff": {
+   "population": 22399.3,
+   "density_per_km2": 32347.6,
+   "exposure": 0.6383
+  },
+  "8842cea465fffff": {
+   "population": 28028.4,
+   "density_per_km2": 40483.9,
+   "exposure": 0.7989
+  },
+  "8842cea467fffff": {
+   "population": 20211.9,
+   "density_per_km2": 29193.3,
+   "exposure": 0.5761
+  },
+  "8842cea469fffff": {
+   "population": 30986.8,
+   "density_per_km2": 44743.6,
+   "exposure": 0.8829
+  },
+  "8842cea46bfffff": {
+   "population": 28304.8,
+   "density_per_km2": 40870.3,
+   "exposure": 0.8065
+  },
+  "8842cea46dfffff": {
+   "population": 24361.7,
+   "density_per_km2": 35182.8,
+   "exposure": 0.6943
+  },
+  "8842cea559fffff": {
+   "population": 16656.6,
+   "density_per_km2": 24062.3,
+   "exposure": 0.4748
+  },
+  "8842cea55bfffff": {
+   "population": 18861.1,
+   "density_per_km2": 27246.6,
+   "exposure": 0.5377
+  },
+  "8842cea601fffff": {
+   "population": 37252.0,
+   "density_per_km2": 53734.9,
+   "exposure": 1.0
+  },
+  "8842cea603fffff": {
+   "population": 35858.5,
+   "density_per_km2": 51724.0,
+   "exposure": 1.0
+  },
+  "8842cea605fffff": {
+   "population": 36262.5,
+   "density_per_km2": 52315.8,
+   "exposure": 1.0
+  },
+  "8842cea607fffff": {
+   "population": 25785.5,
+   "density_per_km2": 37200.0,
+   "exposure": 0.7341
+  },
+  "8842cea609fffff": {
+   "population": 24429.0,
+   "density_per_km2": 35233.3,
+   "exposure": 0.6953
+  },
+  "8842cea60bfffff": {
+   "population": 36245.7,
+   "density_per_km2": 52275.1,
+   "exposure": 1.0
+  },
+  "8842cea60dfffff": {
+   "population": 25539.7,
+   "density_per_km2": 36840.9,
+   "exposure": 0.727
+  },
+  "8842cea611fffff": {
+   "population": 32998.0,
+   "density_per_km2": 47589.6,
+   "exposure": 0.9391
+  },
+  "8842cea613fffff": {
+   "population": 34069.6,
+   "density_per_km2": 49134.3,
+   "exposure": 0.9696
+  },
+  "8842cea615fffff": {
+   "population": 35334.8,
+   "density_per_km2": 50967.8,
+   "exposure": 1.0
+  },
+  "8842cea617fffff": {
+   "population": 30602.5,
+   "density_per_km2": 44141.1,
+   "exposure": 0.871
+  },
+  "8842cea619fffff": {
+   "population": 33719.7,
+   "density_per_km2": 48623.7,
+   "exposure": 0.9595
+  },
+  "8842cea61bfffff": {
+   "population": 40399.8,
+   "density_per_km2": 58255.4,
+   "exposure": 1.0
+  },
+  "8842cea61dfffff": {
+   "population": 31389.3,
+   "density_per_km2": 45270.3,
+   "exposure": 0.8933
+  },
+  "8842cea621fffff": {
+   "population": 35269.1,
+   "density_per_km2": 50897.6,
+   "exposure": 1.0
+  },
+  "8842cea623fffff": {
+   "population": 34567.3,
+   "density_per_km2": 49884.1,
+   "exposure": 0.9844
+  },
+  "8842cea625fffff": {
+   "population": 23844.6,
+   "density_per_km2": 34416.1,
+   "exposure": 0.6791
+  },
+  "8842cea627fffff": {
+   "population": 30386.0,
+   "density_per_km2": 43856.9,
+   "exposure": 0.8654
+  },
+  "8842cea629fffff": {
+   "population": 33177.3,
+   "density_per_km2": 47872.3,
+   "exposure": 0.9447
+  },
+  "8842cea62bfffff": {
+   "population": 18919.0,
+   "density_per_km2": 27298.1,
+   "exposure": 0.5387
+  },
+  "8842cea62dfffff": {
+   "population": 33329.7,
+   "density_per_km2": 48099.7,
+   "exposure": 0.9492
+  },
+  "8842cea631fffff": {
+   "population": 38473.3,
+   "density_per_km2": 55511.3,
+   "exposure": 1.0
+  },
+  "8842cea633fffff": {
+   "population": 34655.8,
+   "density_per_km2": 50002.4,
+   "exposure": 0.9867
+  },
+  "8842cea635fffff": {
+   "population": 39346.6,
+   "density_per_km2": 56780.2,
+   "exposure": 1.0
+  },
+  "8842cea637fffff": {
+   "population": 25880.5,
+   "density_per_km2": 37347.0,
+   "exposure": 0.737
+  },
+  "8842cea639fffff": {
+   "population": 33206.8,
+   "density_per_km2": 47905.8,
+   "exposure": 0.9453
+  },
+  "8842cea63bfffff": {
+   "population": 38196.6,
+   "density_per_km2": 55103.4,
+   "exposure": 1.0
+  },
+  "8842cea63dfffff": {
+   "population": 32427.5,
+   "density_per_km2": 46788.8,
+   "exposure": 0.9233
+  },
+  "8842cea641fffff": {
+   "population": 24061.3,
+   "density_per_km2": 34698.6,
+   "exposure": 0.6847
+  },
+  "8842cea643fffff": {
+   "population": 21080.9,
+   "density_per_km2": 30400.1,
+   "exposure": 0.5999
+  },
+  "8842cea645fffff": {
+   "population": 16717.3,
+   "density_per_km2": 24111.6,
+   "exposure": 0.4758
+  },
+  "8842cea647fffff": {
+   "population": 29602.5,
+   "density_per_km2": 42695.4,
+   "exposure": 0.8425
+  },
+  "8842cea649fffff": {
+   "population": 20067.7,
+   "density_per_km2": 28935.3,
+   "exposure": 0.571
+  },
+  "8842cea64bfffff": {
+   "population": 28307.3,
+   "density_per_km2": 40815.4,
+   "exposure": 0.8054
+  },
+  "8842cea64dfffff": {
+   "population": 27919.3,
+   "density_per_km2": 40262.9,
+   "exposure": 0.7945
+  },
+  "8842cea651fffff": {
+   "population": 30643.3,
+   "density_per_km2": 44182.1,
+   "exposure": 0.8719
+  },
+  "8842cea653fffff": {
+   "population": 27961.4,
+   "density_per_km2": 40314.6,
+   "exposure": 0.7955
+  },
+  "8842cea655fffff": {
+   "population": 26616.9,
+   "density_per_km2": 38382.8,
+   "exposure": 0.7574
+  },
+  "8842cea657fffff": {
+   "population": 34204.3,
+   "density_per_km2": 49323.3,
+   "exposure": 0.9733
+  },
+  "8842cea659fffff": {
+   "population": 23580.6,
+   "density_per_km2": 33994.1,
+   "exposure": 0.6708
+  },
+  "8842cea65bfffff": {
+   "population": 30165.5,
+   "density_per_km2": 43486.4,
+   "exposure": 0.8581
+  },
+  "8842cea65dfffff": {
+   "population": 29060.8,
+   "density_per_km2": 41901.2,
+   "exposure": 0.8268
+  },
+  "8842cea661fffff": {
+   "population": 18426.8,
+   "density_per_km2": 26585.1,
+   "exposure": 0.5246
+  },
+  "8842cea663fffff": {
+   "population": 36167.2,
+   "density_per_km2": 52179.2,
+   "exposure": 1.0
+  },
+  "8842cea665fffff": {
+   "population": 21521.4,
+   "density_per_km2": 31054.7,
+   "exposure": 0.6128
+  },
+  "8842cea667fffff": {
+   "population": 34508.3,
+   "density_per_km2": 49793.7,
+   "exposure": 0.9826
+  },
+  "8842cea669fffff": {
+   "population": 27319.3,
+   "density_per_km2": 39409.3,
+   "exposure": 0.7777
+  },
+  "8842cea66bfffff": {
+   "population": 26215.5,
+   "density_per_km2": 37816.4,
+   "exposure": 0.7462
+  },
+  "8842cea66dfffff": {
+   "population": 25894.1,
+   "density_per_km2": 37359.2,
+   "exposure": 0.7372
+  },
+  "8842cea685fffff": {
+   "population": 25110.3,
+   "density_per_km2": 36222.5,
+   "exposure": 0.7148
+  },
+  "8842cea689fffff": {
+   "population": 29781.5,
+   "density_per_km2": 42948.1,
+   "exposure": 0.8475
+  },
+  "8842cea68dfffff": {
+   "population": 35538.4,
+   "density_per_km2": 51258.1,
+   "exposure": 1.0
+  },
+  "8842cea6a1fffff": {
+   "population": 26116.1,
+   "density_per_km2": 37684.5,
+   "exposure": 0.7436
+  },
+  "8842cea6a5fffff": {
+   "population": 27212.4,
+   "density_per_km2": 39272.5,
+   "exposure": 0.775
+  },
+  "8842cea6a9fffff": {
+   "population": 18844.4,
+   "density_per_km2": 27187.9,
+   "exposure": 0.5365
+  },
+  "8842cea6adfffff": {
+   "population": 31293.0,
+   "density_per_km2": 45155.3,
+   "exposure": 0.8911
+  },
+  "8842cea6c1fffff": {
+   "population": 28371.7,
+   "density_per_km2": 40909.9,
+   "exposure": 0.8073
+  },
+  "8842cea6c3fffff": {
+   "population": 32717.4,
+   "density_per_km2": 47175.3,
+   "exposure": 0.9309
+  },
+  "8842cea6c5fffff": {
+   "population": 36546.1,
+   "density_per_km2": 52705.1,
+   "exposure": 1.0
+  },
+  "8842cea6c7fffff": {
+   "population": 28736.8,
+   "density_per_km2": 41442.2,
+   "exposure": 0.8178
+  },
+  "8842cea6c9fffff": {
+   "population": 22247.1,
+   "density_per_km2": 32074.2,
+   "exposure": 0.6329
+  },
+  "8842cea6cbfffff": {
+   "population": 21569.6,
+   "density_per_km2": 31096.9,
+   "exposure": 0.6136
+  },
+  "8842cea6cdfffff": {
+   "population": 39743.6,
+   "density_per_km2": 57308.3,
+   "exposure": 1.0
+  },
+  "8842cea6d5fffff": {
+   "population": 25481.0,
+   "density_per_km2": 36740.5,
+   "exposure": 0.725
+  },
+  "8842cea6d9fffff": {
+   "population": 31360.5,
+   "density_per_km2": 45204.6,
+   "exposure": 0.892
+  },
+  "8842cea6ddfffff": {
+   "population": 25642.3,
+   "density_per_km2": 36968.0,
+   "exposure": 0.7295
+  },
+  "8842cea6e1fffff": {
+   "population": 32518.3,
+   "density_per_km2": 46910.3,
+   "exposure": 0.9257
+  },
+  "8842cea6e3fffff": {
+   "population": 29250.6,
+   "density_per_km2": 42195.7,
+   "exposure": 0.8327
+  },
+  "8842cea6e5fffff": {
+   "population": 22610.3,
+   "density_per_km2": 32622.3,
+   "exposure": 0.6437
+  },
+  "8842cea6e7fffff": {
+   "population": 22233.5,
+   "density_per_km2": 32078.1,
+   "exposure": 0.633
+  },
+  "8842cea6e9fffff": {
+   "population": 34464.2,
+   "density_per_km2": 49710.5,
+   "exposure": 0.9809
+  },
+  "8842cea6ebfffff": {
+   "population": 37737.9,
+   "density_per_km2": 54431.4,
+   "exposure": 1.0
+  },
+  "8842cea6edfffff": {
+   "population": 36496.6,
+   "density_per_km2": 52650.0,
+   "exposure": 1.0
+  },
+  "8842cea701fffff": {
+   "population": 8880.5,
+   "density_per_km2": 12823.8,
+   "exposure": 0.2531
+  },
+  "8842cea703fffff": {
+   "population": 27033.9,
+   "density_per_km2": 39037.8,
+   "exposure": 0.7703
+  },
+  "8842cea705fffff": {
+   "population": 5343.9,
+   "density_per_km2": 7718.1,
+   "exposure": 0.1523
+  },
+  "8842cea707fffff": {
+   "population": 8637.3,
+   "density_per_km2": 12474.4,
+   "exposure": 0.2462
+  },
+  "8842cea709fffff": {
+   "population": 12053.6,
+   "density_per_km2": 17403.6,
+   "exposure": 0.3434
+  },
+  "8842cea70bfffff": {
+   "population": 20259.6,
+   "density_per_km2": 29251.4,
+   "exposure": 0.5772
+  },
+  "8842cea70dfffff": {
+   "population": 14018.1,
+   "density_per_km2": 20243.3,
+   "exposure": 0.3995
+  },
+  "8842cea711fffff": {
+   "population": 28326.1,
+   "density_per_km2": 40896.6,
+   "exposure": 0.807
+  },
+  "8842cea713fffff": {
+   "population": 23547.9,
+   "density_per_km2": 33997.4,
+   "exposure": 0.6709
+  },
+  "8842cea715fffff": {
+   "population": 34058.3,
+   "density_per_km2": 49180.4,
+   "exposure": 0.9705
+  },
+  "8842cea717fffff": {
+   "population": 27751.0,
+   "density_per_km2": 40072.0,
+   "exposure": 0.7907
+  },
+  "8842cea719fffff": {
+   "population": 23378.6,
+   "density_per_km2": 33748.8,
+   "exposure": 0.666
+  },
+  "8842cea71bfffff": {
+   "population": 31021.4,
+   "density_per_km2": 44781.0,
+   "exposure": 0.8837
+  },
+  "8842cea71dfffff": {
+   "population": 35014.4,
+   "density_per_km2": 50553.9,
+   "exposure": 0.9976
+  },
+  "8842cea729fffff": {
+   "population": 3305.0,
+   "density_per_km2": 4774.1,
+   "exposure": 0.0942
+  },
+  "8842cea72bfffff": {
+   "population": 3098.9,
+   "density_per_km2": 4476.2,
+   "exposure": 0.0883
+  },
+  "8842cea731fffff": {
+   "population": 18793.1,
+   "density_per_km2": 27145.4,
+   "exposure": 0.5357
+  },
+  "8842cea733fffff": {
+   "population": 19824.0,
+   "density_per_km2": 28633.9,
+   "exposure": 0.565
+  },
+  "8842cea739fffff": {
+   "population": 26795.8,
+   "density_per_km2": 38699.4,
+   "exposure": 0.7637
+  },
+  "8842cea73bfffff": {
+   "population": 22794.0,
+   "density_per_km2": 32919.3,
+   "exposure": 0.6496
+  },
+  "8842cea73dfffff": {
+   "population": 9285.2,
+   "density_per_km2": 13412.1,
+   "exposure": 0.2647
+  },
+  "8842cea741fffff": {
+   "population": 6474.7,
+   "density_per_km2": 9347.4,
+   "exposure": 0.1845
+  },
+  "8842cea743fffff": {
+   "population": 8838.2,
+   "density_per_km2": 12759.3,
+   "exposure": 0.2518
+  },
+  "8842cea745fffff": {
+   "population": 8629.9,
+   "density_per_km2": 12460.6,
+   "exposure": 0.2459
+  },
+  "8842cea747fffff": {
+   "population": 12277.6,
+   "density_per_km2": 17727.4,
+   "exposure": 0.3498
+  },
+  "8842cea749fffff": {
+   "population": 4924.6,
+   "density_per_km2": 7108.5,
+   "exposure": 0.1403
+  },
+  "8842cea74bfffff": {
+   "population": 5150.7,
+   "density_per_km2": 7434.8,
+   "exposure": 0.1467
+  },
+  "8842cea74dfffff": {
+   "population": 5676.4,
+   "density_per_km2": 8195.0,
+   "exposure": 0.1617
+  },
+  "8842cea751fffff": {
+   "population": 21562.1,
+   "density_per_km2": 31122.6,
+   "exposure": 0.6141
+  },
+  "8842cea753fffff": {
+   "population": 22744.9,
+   "density_per_km2": 32829.4,
+   "exposure": 0.6478
+  },
+  "8842cea755fffff": {
+   "population": 20128.9,
+   "density_per_km2": 29058.5,
+   "exposure": 0.5734
+  },
+  "8842cea757fffff": {
+   "population": 32501.2,
+   "density_per_km2": 46918.8,
+   "exposure": 0.9259
+  },
+  "8842cea759fffff": {
+   "population": 20334.3,
+   "density_per_km2": 29346.4,
+   "exposure": 0.5791
+  },
+  "8842cea75bfffff": {
+   "population": 35135.2,
+   "density_per_km2": 50706.2,
+   "exposure": 1.0
+  },
+  "8842cea75dfffff": {
+   "population": 11497.5,
+   "density_per_km2": 16595.7,
+   "exposure": 0.3275
+  },
+  "8842cea761fffff": {
+   "population": 8236.4,
+   "density_per_km2": 11896.0,
+   "exposure": 0.2347
+  },
+  "8842cea763fffff": {
+   "population": 14826.8,
+   "density_per_km2": 21414.4,
+   "exposure": 0.4226
+  },
+  "8842cea765fffff": {
+   "population": 4610.5,
+   "density_per_km2": 6660.1,
+   "exposure": 0.1314
+  },
+  "8842cea767fffff": {
+   "population": 9599.1,
+   "density_per_km2": 13866.2,
+   "exposure": 0.2736
+  },
+  "8842cea769fffff": {
+   "population": 3291.5,
+   "density_per_km2": 4753.3,
+   "exposure": 0.0938
+  },
+  "8842cea76bfffff": {
+   "population": 13607.7,
+   "density_per_km2": 19650.9,
+   "exposure": 0.3878
+  },
+  "8842cea76dfffff": {
+   "population": 1376.5,
+   "density_per_km2": 1988.1,
+   "exposure": 0.0392
+  },
+  "8842ceb403fffff": {
+   "population": 1546.1,
+   "density_per_km2": 2228.3,
+   "exposure": 0.044
+  },
+  "8842ceb407fffff": {
+   "population": 1401.6,
+   "density_per_km2": 2020.3,
+   "exposure": 0.0399
+  },
+  "8842ceb411fffff": {
+   "population": 2200.0,
+   "density_per_km2": 3170.1,
+   "exposure": 0.0626
+  },
+  "8842ceb413fffff": {
+   "population": 2900.8,
+   "density_per_km2": 4179.8,
+   "exposure": 0.0825
+  },
+  "8842ceb415fffff": {
+   "population": 2426.1,
+   "density_per_km2": 3496.4,
+   "exposure": 0.069
+  },
+  "8842ceb417fffff": {
+   "population": 2844.6,
+   "density_per_km2": 4099.5,
+   "exposure": 0.0809
+  },
+  "8842ceb419fffff": {
+   "population": 1499.4,
+   "density_per_km2": 2160.3,
+   "exposure": 0.0426
+  },
+  "8842ceb41bfffff": {
+   "population": 2208.4,
+   "density_per_km2": 3181.7,
+   "exposure": 0.0628
+  },
+  "8842ceb41dfffff": {
+   "population": 1113.9,
+   "density_per_km2": 1605.1,
+   "exposure": 0.0317
+  },
+  "8842ceb423fffff": {
+   "population": 1215.7,
+   "density_per_km2": 1752.8,
+   "exposure": 0.0346
+  },
+  "8842ceb431fffff": {
+   "population": 2514.6,
+   "density_per_km2": 3625.0,
+   "exposure": 0.0715
+  },
+  "8842ceb433fffff": {
+   "population": 2092.9,
+   "density_per_km2": 3017.2,
+   "exposure": 0.0595
+  },
+  "8842ceb435fffff": {
+   "population": 2188.1,
+   "density_per_km2": 3154.9,
+   "exposure": 0.0623
+  },
+  "8842ceb437fffff": {
+   "population": 3030.6,
+   "density_per_km2": 4369.6,
+   "exposure": 0.0862
+  },
+  "8842ceb439fffff": {
+   "population": 2307.5,
+   "density_per_km2": 3326.1,
+   "exposure": 0.0656
+  },
+  "8842ceb43bfffff": {
+   "population": 1703.9,
+   "density_per_km2": 2455.9,
+   "exposure": 0.0485
+  },
+  "8842ceb43dfffff": {
+   "population": 1756.1,
+   "density_per_km2": 2531.6,
+   "exposure": 0.05
+  },
+  "8842ceb453fffff": {
+   "population": 1369.1,
+   "density_per_km2": 1972.2,
+   "exposure": 0.0389
+  },
+  "8842ceb457fffff": {
+   "population": 656.1,
+   "density_per_km2": 945.3,
+   "exposure": 0.0187
+  },
+  "8842ceb45bfffff": {
+   "population": 1269.5,
+   "density_per_km2": 1828.6,
+   "exposure": 0.0361
+  },
+  "8842ceb481fffff": {
+   "population": 2095.6,
+   "density_per_km2": 3019.9,
+   "exposure": 0.0596
+  },
+  "8842ceb483fffff": {
+   "population": 4328.7,
+   "density_per_km2": 6237.9,
+   "exposure": 0.1231
+  },
+  "8842ceb485fffff": {
+   "population": 2058.2,
+   "density_per_km2": 2966.5,
+   "exposure": 0.0585
+  },
+  "8842ceb487fffff": {
+   "population": 17479.5,
+   "density_per_km2": 25192.5,
+   "exposure": 0.4971
+  },
+  "8842ceb489fffff": {
+   "population": 2167.7,
+   "density_per_km2": 3123.3,
+   "exposure": 0.0616
+  },
+  "8842ceb48bfffff": {
+   "population": 2907.6,
+   "density_per_km2": 4189.4,
+   "exposure": 0.0827
+  },
+  "8842ceb48dfffff": {
+   "population": 2791.6,
+   "density_per_km2": 4023.0,
+   "exposure": 0.0794
+  },
+  "8842ceb491fffff": {
+   "population": 3270.3,
+   "density_per_km2": 4711.8,
+   "exposure": 0.093
+  },
+  "8842ceb493fffff": {
+   "population": 3242.3,
+   "density_per_km2": 4671.4,
+   "exposure": 0.0922
+  },
+  "8842ceb495fffff": {
+   "population": 13477.1,
+   "density_per_km2": 19420.7,
+   "exposure": 0.3832
+  },
+  "8842ceb497fffff": {
+   "population": 2977.4,
+   "density_per_km2": 4290.4,
+   "exposure": 0.0847
+  },
+  "8842ceb499fffff": {
+   "population": 3713.3,
+   "density_per_km2": 5349.3,
+   "exposure": 0.1056
+  },
+  "8842ceb49bfffff": {
+   "population": 3486.9,
+   "density_per_km2": 5023.1,
+   "exposure": 0.0991
+  },
+  "8842ceb49dfffff": {
+   "population": 2765.1,
+   "density_per_km2": 3984.0,
+   "exposure": 0.0786
+  },
+  "8842ceb4a1fffff": {
+   "population": 35133.1,
+   "density_per_km2": 50651.8,
+   "exposure": 0.9995
+  },
+  "8842ceb4a3fffff": {
+   "population": 32964.5,
+   "density_per_km2": 47524.5,
+   "exposure": 0.9378
+  },
+  "8842ceb4a5fffff": {
+   "population": 34675.8,
+   "density_per_km2": 50000.4,
+   "exposure": 0.9867
+  },
+  "8842ceb4a7fffff": {
+   "population": 33774.7,
+   "density_per_km2": 48700.2,
+   "exposure": 0.961
+  },
+  "8842ceb4a9fffff": {
+   "population": 11175.4,
+   "density_per_km2": 16109.5,
+   "exposure": 0.3179
+  },
+  "8842ceb4abfffff": {
+   "population": 33659.0,
+   "density_per_km2": 48519.0,
+   "exposure": 0.9574
+  },
+  "8842ceb4adfffff": {
+   "population": 21743.8,
+   "density_per_km2": 31348.9,
+   "exposure": 0.6186
+  },
+  "8842ceb4b1fffff": {
+   "population": 26538.0,
+   "density_per_km2": 38252.8,
+   "exposure": 0.7548
+  },
+  "8842ceb4b3fffff": {
+   "population": 32395.4,
+   "density_per_km2": 46695.3,
+   "exposure": 0.9214
+  },
+  "8842ceb4b5fffff": {
+   "population": 21382.3,
+   "density_per_km2": 30826.1,
+   "exposure": 0.6083
+  },
+  "8842ceb4b7fffff": {
+   "population": 34118.2,
+   "density_per_km2": 49186.3,
+   "exposure": 0.9706
+  },
+  "8842ceb4b9fffff": {
+   "population": 23428.5,
+   "density_per_km2": 33766.0,
+   "exposure": 0.6663
+  },
+  "8842ceb4bbfffff": {
+   "population": 20958.8,
+   "density_per_km2": 30206.2,
+   "exposure": 0.5961
+  },
+  "8842ceb4bdfffff": {
+   "population": 26651.5,
+   "density_per_km2": 38417.1,
+   "exposure": 0.7581
+  },
+  "8842ceb4c1fffff": {
+   "population": 2772.9,
+   "density_per_km2": 3994.9,
+   "exposure": 0.0788
+  },
+  "8842ceb4c3fffff": {
+   "population": 2805.8,
+   "density_per_km2": 4042.2,
+   "exposure": 0.0798
+  },
+  "8842ceb4c5fffff": {
+   "population": 2680.6,
+   "density_per_km2": 3862.5,
+   "exposure": 0.0762
+  },
+  "8842ceb4c7fffff": {
+   "population": 2573.8,
+   "density_per_km2": 3708.5,
+   "exposure": 0.0732
+  },
+  "8842ceb4c9fffff": {
+   "population": 2708.8,
+   "density_per_km2": 3901.9,
+   "exposure": 0.077
+  },
+  "8842ceb4cbfffff": {
+   "population": 2306.9,
+   "density_per_km2": 3323.0,
+   "exposure": 0.0656
+  },
+  "8842ceb4cdfffff": {
+   "population": 2212.0,
+   "density_per_km2": 3186.8,
+   "exposure": 0.0629
+  },
+  "8842ceb4d1fffff": {
+   "population": 2813.5,
+   "density_per_km2": 4052.5,
+   "exposure": 0.08
+  },
+  "8842ceb4d3fffff": {
+   "population": 3399.4,
+   "density_per_km2": 4896.4,
+   "exposure": 0.0966
+  },
+  "8842ceb4d5fffff": {
+   "population": 2369.8,
+   "density_per_km2": 3414.1,
+   "exposure": 0.0674
+  },
+  "8842ceb4d7fffff": {
+   "population": 2290.7,
+   "density_per_km2": 3300.0,
+   "exposure": 0.0651
+  },
+  "8842ceb4d9fffff": {
+   "population": 2696.1,
+   "density_per_km2": 3883.0,
+   "exposure": 0.0766
+  },
+  "8842ceb4dbfffff": {
+   "population": 2607.7,
+   "density_per_km2": 3755.5,
+   "exposure": 0.0741
+  },
+  "8842ceb4ddfffff": {
+   "population": 2879.4,
+   "density_per_km2": 4147.6,
+   "exposure": 0.0818
+  },
+  "8842ceb4e1fffff": {
+   "population": 2792.0,
+   "density_per_km2": 4024.2,
+   "exposure": 0.0794
+  },
+  "8842ceb4e3fffff": {
+   "population": 2675.5,
+   "density_per_km2": 3856.3,
+   "exposure": 0.0761
+  },
+  "8842ceb4e5fffff": {
+   "population": 1950.0,
+   "density_per_km2": 2811.0,
+   "exposure": 0.0555
+  },
+  "8842ceb4e7fffff": {
+   "population": 1835.2,
+   "density_per_km2": 2645.6,
+   "exposure": 0.0522
+  },
+  "8842ceb4e9fffff": {
+   "population": 2766.7,
+   "density_per_km2": 3987.1,
+   "exposure": 0.0787
+  },
+  "8842ceb4ebfffff": {
+   "population": 2615.9,
+   "density_per_km2": 3769.7,
+   "exposure": 0.0744
+  },
+  "8842ceb4edfffff": {
+   "population": 2651.7,
+   "density_per_km2": 3822.1,
+   "exposure": 0.0754
+  },
+  "8842ceb513fffff": {
+   "population": 1129.1,
+   "density_per_km2": 1628.7,
+   "exposure": 0.0321
+  },
+  "8842ceb533fffff": {
+   "population": 16727.1,
+   "density_per_km2": 24140.0,
+   "exposure": 0.4764
+  },
+  "8842ceb581fffff": {
+   "population": 32132.8,
+   "density_per_km2": 46356.1,
+   "exposure": 0.9147
+  },
+  "8842ceb583fffff": {
+   "population": 32791.0,
+   "density_per_km2": 47304.8,
+   "exposure": 0.9335
+  },
+  "8842ceb585fffff": {
+   "population": 27846.5,
+   "density_per_km2": 40178.8,
+   "exposure": 0.7929
+  },
+  "8842ceb587fffff": {
+   "population": 22025.9,
+   "density_per_km2": 31779.8,
+   "exposure": 0.6271
+  },
+  "8842ceb589fffff": {
+   "population": 9611.8,
+   "density_per_km2": 13864.5,
+   "exposure": 0.2736
+  },
+  "8842ceb58bfffff": {
+   "population": 29538.0,
+   "density_per_km2": 42606.0,
+   "exposure": 0.8407
+  },
+  "8842ceb58dfffff": {
+   "population": 10677.0,
+   "density_per_km2": 15403.4,
+   "exposure": 0.304
+  },
+  "8842ceb591fffff": {
+   "population": 30063.1,
+   "density_per_km2": 43361.9,
+   "exposure": 0.8557
+  },
+  "8842ceb593fffff": {
+   "population": 31382.4,
+   "density_per_km2": 45264.1,
+   "exposure": 0.8932
+  },
+  "8842ceb595fffff": {
+   "population": 30196.4,
+   "density_per_km2": 43561.0,
+   "exposure": 0.8596
+  },
+  "8842ceb597fffff": {
+   "population": 26923.9,
+   "density_per_km2": 38839.5,
+   "exposure": 0.7664
+  },
+  "8842ceb599fffff": {
+   "population": 32269.6,
+   "density_per_km2": 46538.1,
+   "exposure": 0.9183
+  },
+  "8842ceb59bfffff": {
+   "population": 33446.9,
+   "density_per_km2": 48235.1,
+   "exposure": 0.9518
+  },
+  "8842ceb59dfffff": {
+   "population": 21712.7,
+   "density_per_km2": 31318.2,
+   "exposure": 0.618
+  },
+  "8842ceb5a1fffff": {
+   "population": 17454.8,
+   "density_per_km2": 25192.4,
+   "exposure": 0.4971
+  },
+  "8842ceb5a3fffff": {
+   "population": 13938.4,
+   "density_per_km2": 20116.9,
+   "exposure": 0.397
+  },
+  "8842ceb5a5fffff": {
+   "population": 10659.8,
+   "density_per_km2": 15387.6,
+   "exposure": 0.3036
+  },
+  "8842ceb5a7fffff": {
+   "population": 6289.7,
+   "density_per_km2": 9079.2,
+   "exposure": 0.1792
+  },
+  "8842ceb5a9fffff": {
+   "population": 30723.2,
+   "density_per_km2": 44336.5,
+   "exposure": 0.8749
+  },
+  "8842ceb5abfffff": {
+   "population": 31129.2,
+   "density_per_km2": 44921.5,
+   "exposure": 0.8864
+  },
+  "8842ceb5adfffff": {
+   "population": 24804.4,
+   "density_per_km2": 35800.6,
+   "exposure": 0.7065
+  },
+  "8842ceb5b1fffff": {
+   "population": 26917.5,
+   "density_per_km2": 38842.4,
+   "exposure": 0.7665
+  },
+  "8842ceb5b3fffff": {
+   "population": 16564.2,
+   "density_per_km2": 23902.0,
+   "exposure": 0.4717
+  },
+  "8842ceb5b5fffff": {
+   "population": 9434.9,
+   "density_per_km2": 13616.8,
+   "exposure": 0.2687
+  },
+  "8842ceb5b7fffff": {
+   "population": 5427.4,
+   "density_per_km2": 7833.0,
+   "exposure": 0.1546
+  },
+  "8842ceb5b9fffff": {
+   "population": 31408.1,
+   "density_per_km2": 45316.1,
+   "exposure": 0.8942
+  },
+  "8842ceb5bbfffff": {
+   "population": 28574.7,
+   "density_per_km2": 41227.3,
+   "exposure": 0.8135
+  },
+  "8842ceb5bdfffff": {
+   "population": 25959.3,
+   "density_per_km2": 37460.4,
+   "exposure": 0.7392
+  },
+  "8842ceb5c1fffff": {
+   "population": 2554.8,
+   "density_per_km2": 3684.7,
+   "exposure": 0.0727
+  },
+  "8842ceb5c3fffff": {
+   "population": 2997.0,
+   "density_per_km2": 4322.4,
+   "exposure": 0.0853
+  },
+  "8842ceb5c5fffff": {
+   "population": 1719.6,
+   "density_per_km2": 2480.5,
+   "exposure": 0.0489
+  },
+  "8842ceb5c7fffff": {
+   "population": 1669.5,
+   "density_per_km2": 2408.2,
+   "exposure": 0.0475
+  },
+  "8842ceb5c9fffff": {
+   "population": 2439.5,
+   "density_per_km2": 3517.9,
+   "exposure": 0.0694
+  },
+  "8842ceb5cbfffff": {
+   "population": 2723.7,
+   "density_per_km2": 3927.7,
+   "exposure": 0.0775
+  },
+  "8842ceb5cdfffff": {
+   "population": 1604.7,
+   "density_per_km2": 2314.4,
+   "exposure": 0.0457
+  },
+  "8842ceb5d1fffff": {
+   "population": 6416.4,
+   "density_per_km2": 9252.4,
+   "exposure": 0.1826
+  },
+  "8842ceb5d3fffff": {
+   "population": 25555.6,
+   "density_per_km2": 36850.2,
+   "exposure": 0.7272
+  },
+  "8842ceb5d5fffff": {
+   "population": 8340.7,
+   "density_per_km2": 12029.1,
+   "exposure": 0.2374
+  },
+  "8842ceb5d7fffff": {
+   "population": 32223.8,
+   "density_per_km2": 46472.7,
+   "exposure": 0.9171
+  },
+  "8842ceb5d9fffff": {
+   "population": 2363.7,
+   "density_per_km2": 3408.0,
+   "exposure": 0.0672
+  },
+  "8842ceb5dbfffff": {
+   "population": 3056.1,
+   "density_per_km2": 4406.1,
+   "exposure": 0.0869
+  },
+  "8842ceb5ddfffff": {
+   "population": 2785.7,
+   "density_per_km2": 4016.9,
+   "exposure": 0.0793
+  },
+  "8842ceb5e1fffff": {
+   "population": 9769.0,
+   "density_per_km2": 14095.9,
+   "exposure": 0.2782
+  },
+  "8842ceb5e3fffff": {
+   "population": 20157.5,
+   "density_per_km2": 29085.1,
+   "exposure": 0.5739
+  },
+  "8842ceb5e5fffff": {
+   "population": 19182.8,
+   "density_per_km2": 27683.4,
+   "exposure": 0.5463
+  },
+  "8842ceb5e7fffff": {
+   "population": 24662.3,
+   "density_per_km2": 35590.6,
+   "exposure": 0.7023
+  },
+  "8842ceb5e9fffff": {
+   "population": 2044.3,
+   "density_per_km2": 2949.4,
+   "exposure": 0.0582
+  },
+  "8842ceb5ebfffff": {
+   "population": 1799.3,
+   "density_per_km2": 2595.8,
+   "exposure": 0.0512
+  },
+  "8842ceb5edfffff": {
+   "population": 6699.9,
+   "density_per_km2": 9667.6,
+   "exposure": 0.1908
+  },
+  "8842ceb685fffff": {
+   "population": 170.2,
+   "density_per_km2": 245.1,
+   "exposure": 0.0048
+  },
+  "8842ceb687fffff": {
+   "population": 745.0,
+   "density_per_km2": 1072.7,
+   "exposure": 0.0212
+  },
+  "8842ceb6a1fffff": {
+   "population": 1163.1,
+   "density_per_km2": 1675.2,
+   "exposure": 0.0331
+  },
+  "8842ceb6a3fffff": {
+   "population": 1808.3,
+   "density_per_km2": 2604.5,
+   "exposure": 0.0514
+  },
+  "8842ceb6a5fffff": {
+   "population": 1915.3,
+   "density_per_km2": 2759.1,
+   "exposure": 0.0544
+  },
+  "8842ceb6a7fffff": {
+   "population": 1925.1,
+   "density_per_km2": 2773.1,
+   "exposure": 0.0547
+  },
+  "8842ceb6a9fffff": {
+   "population": 286.9,
+   "density_per_km2": 413.2,
+   "exposure": 0.0082
+  },
+  "8842ceb6abfffff": {
+   "population": 897.7,
+   "density_per_km2": 1292.7,
+   "exposure": 0.0255
+  },
+  "8842ceb6adfffff": {
+   "population": 874.9,
+   "density_per_km2": 1260.2,
+   "exposure": 0.0249
+  },
+  "8842ceb6b1fffff": {
+   "population": 1915.7,
+   "density_per_km2": 2758.7,
+   "exposure": 0.0544
+  },
+  "8842ceb6b3fffff": {
+   "population": 1386.5,
+   "density_per_km2": 1996.6,
+   "exposure": 0.0394
+  },
+  "8842ceb6b5fffff": {
+   "population": 1606.8,
+   "density_per_km2": 2314.2,
+   "exposure": 0.0457
+  },
+  "8842ceb6b7fffff": {
+   "population": 2103.9,
+   "density_per_km2": 3030.2,
+   "exposure": 0.0598
+  },
+  "8842ceb6b9fffff": {
+   "population": 1312.9,
+   "density_per_km2": 1890.4,
+   "exposure": 0.0373
+  },
+  "8842ceb6bbfffff": {
+   "population": 1163.0,
+   "density_per_km2": 1674.6,
+   "exposure": 0.033
+  },
+  "8842ceb6bdfffff": {
+   "population": 1250.8,
+   "density_per_km2": 1801.2,
+   "exposure": 0.0355
+  },
+  "8842ceb6e3fffff": {
+   "population": 107.1,
+   "density_per_km2": 154.2,
+   "exposure": 0.003
+  },
+  "8842ceb6e7fffff": {
+   "population": 396.3,
+   "density_per_km2": 570.7,
+   "exposure": 0.0113
+  }
+ }
+}

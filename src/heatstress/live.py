@@ -351,17 +351,22 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
     heat_index = th.heat_index(ta, rh)
 
     hazard = rk.normalise_hazard(wbgt)
-    vuln_path = ROOT / "data" / "processed" / f"vulnerability_{slug}.json"
-    vuln_cells = {}
-    if vuln_path.exists():
-        vuln_source = vu.CensusWardVulnerability(data_path=vuln_path)
-        try:
-            vuln_cells = json.loads(vuln_path.read_text(encoding="utf-8")).get("cells", {})
-        except Exception:
-            pass
+
+    # Same exposure rule as the hindcast (scripts/04_compute_indices.py):
+    # measured population when script 14 has run, the declared proxy otherwise.
+    # Population does not change between the two runs, so both paths must read
+    # the same file or the live map and the replay would rank zones differently.
+    pop_exposure, pop_note = vu.load_population_exposure(ROOT, slug, cells)
+    if pop_exposure is None:
+        surface = vu.PlaceholderVulnerability().build(cells, intensity=intensity)
     else:
-        vuln_source = vu.PlaceholderVulnerability()
-    surface = vuln_source.build(cells, intensity=intensity)
+        surface = vu.MeasuredPopulationVulnerability().build(
+            cells, exposure=pop_exposure, intensity=intensity,
+            provenance=pop_note)
+
+    exposure_is_measured = surface.exposure_is_measured
+    exposure_provenance = surface.exposure_provenance
+
     risk = vu.combine_risk(hazard,
                            np.broadcast_to(surface.exposure[None, :], shape),
                            np.broadcast_to(surface.vulnerability[None, :], shape))
@@ -396,7 +401,6 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
     props = {}
     for j, cell in enumerate(cells):
         raw = form["cells"].get(cell, {})
-        vc = vuln_cells.get(cell, {})
         props[cell] = {
             "d_ta_c": round(float(d_ta[j]), 2),
             "intensity": round(float(intensity[j]), 3),
@@ -407,9 +411,6 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
             "vulnerability": round(float(surface.vulnerability[j]), 3),
             "place": place_names.get(cell, {}).get("name"),
             "place_exact": place_names.get(cell, {}).get("exact", False),
-            "population": int(vc.get("population", 0)),
-            "elderly_pct": round(float(vc.get("elderly_pct", 0.0)) * 100, 1) if "elderly_pct" in vc else 0.0,
-            "slum_roof_pct": round(float(vc.get("slum_roof_pct", 0.0)) * 100, 1) if "slum_roof_pct" in vc else 0.0,
             "peak_hour": peak_hour[j],
             "wbgt_focus": round(float(wbgt[focus_idx, j]), 1),
             "utci_focus": round(float(utci[focus_idx, j]), 1),
@@ -541,31 +542,33 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
         "provenance": [
             {"layer": "weather", "plain": "Weather forecast",
              "source": "Open-Meteo forecast API", "resolution": "~11 km, hourly",
-             "status": "measured"},
+             "status": "predicted -- a forecast for days ahead, not an "
+                       "observation; it changes at every refresh"},
             *heat_pattern_rows,
             {"layer": "thermal indices", "plain": "Heat-stress calculations",
              "source": "thermofeel (ECMWF); WBGT by Liljegren, UTCI polynomial",
-             "resolution": "per cell-hour", "status": "measured"},
+             "resolution": "per cell-hour",
+             "status": "computed -- deterministic physics from published "
+                       "equations, cross-checked against thermofeel"},
             {"layer": "physiology", "plain": "Safe limits for the human body",
              "source": "ISO 7243 limits + ACGIH work-rest",
              "resolution": "per persona", "status": "published standards"},
-            (
-                {
-                    "layer": "vulnerability",
-                    "plain": "Who lives there and how they cope",
-                    "source": "Census 2011 Ward Demographics + GHS-POP + AMC Slum Surveys",
-                    "resolution": "per H3 cell (elderly 60+, children 0-6, slum roofing, outdoor labor)",
-                    "status": "MEASURED -- composite Heat Vulnerability Index (HVI) across 392 cells",
-                }
-                if not surface.is_placeholder
-                else {
-                    "layer": "vulnerability",
-                    "plain": "Who lives there and how they cope",
-                    "source": "PLACEHOLDER",
-                    "resolution": "city-wide constant",
-                    "status": "NOT FITTED -- exposure proxied by urban intensity",
-                }
-            ),
+            ({"layer": "population", "plain": "How many people live there",
+              "source": exposure_provenance or "WorldPop",
+              "resolution": "100 m grid, summed per zone",
+              "status": "measured -- modelled residential population "
+                        "(census totals disaggregated onto a grid), not a count"}
+             if exposure_is_measured else
+             {"layer": "population", "plain": "How many people live there",
+              "source": "PLACEHOLDER -- per-zone intensity used as a proxy",
+              "resolution": "no population data",
+              "status": "NOT MEASURED -- proxy is a rescale of the heat "
+                        "pattern, so risk cannot reorder zones relative to "
+                        "hazard"}),
+            {"layer": "vulnerability", "plain": "How well those people cope with heat",
+             "source": "PLACEHOLDER", "resolution": "city-wide constant",
+             "status": "NOT FITTED -- no ward-level age, occupation or housing "
+                       "data; identical in every zone"},
             {"layer": "health risk", "plain": "Expected health impact",
              "source": "literature-shaped exposure-response",
              "resolution": "relative risk only",
@@ -591,20 +594,11 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
                            if form.get("method") == "satellite_lst" else
                            "UHI amplitude remains assumed; live input changes "
                            "currency, not validation.")},
-            (
-                {
-                    "plain": "Vulnerability is measured at ward level using Census 2011 demographics (elderly, infants, outdoor workers) and AMC roofing data.",
-                    "technical": "Heat Vulnerability Index (HVI) computed per cell from 4 standardized Census/GHS-POP indicators with exposure weighting.",
-                }
-                if not surface.is_placeholder
-                else {
-                    "plain": "We could not get neighbourhood-level data on who lives "
-                             "where, so the risk map reflects how hot a place is, not "
-                             "how vulnerable its residents are.",
-                    "technical": "Vulnerability is a declared placeholder and does not "
-                                 "vary between neighbourhoods.",
-                }
-            ),
+            {"plain": "We could not get neighbourhood-level data on who lives "
+                      "where, so the risk map reflects how hot a place is, not "
+                      "how vulnerable its residents are.",
+             "technical": "Vulnerability is a declared placeholder and does not "
+                          "vary between neighbourhoods."},
             {"plain": "The health-risk numbers are not based on real hospital or "
                       "death records from this city.",
              "technical": "Exposure-response coefficients are not fitted to local "
@@ -614,7 +608,6 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
              "technical": "Advisory copy is machine-composed and unverified."},
         ],
         "is_placeholder_urban": False,
-        "is_placeholder_vulnerability": surface.is_placeholder,
         "exposure_response": {
             "metric": rk.DEFAULT_WBGT_RESPONSE.metric,
             "mmt_c": rk.DEFAULT_WBGT_RESPONSE.mmt,
@@ -658,10 +651,8 @@ def compute_live(config_path=DEFAULT_CONFIG, *, max_age_minutes=None,
              "why": "Hydration is not a thermal quantity. Our model cannot "
                     "estimate its effect, so it is not offered as though it could."},
             {"item": "People-at-risk headcount",
-             "why": ("We have no population data and vulnerability is a declared "
-                     "placeholder. A precise headcount would be fabricated."
-                     if surface.is_placeholder else
-                     "The What-If scenario grid simulates physical cooling and shift hours. For measured ward demographics and headcounts, consult the Chatbot population exposure tools.")},
+             "why": "We have no population data and vulnerability is a declared "
+                    "placeholder. A precise headcount would be fabricated."},
         ],
     }
 
