@@ -16,7 +16,7 @@ export function AdvisoryPanel({ data }: { data: HeatData }) {
 
   return (
     <Panel
-      title="PUBLIC ADVISORY WARNING SYSTEM (CAP 1.2 READY)"
+      title="Warning message"
       subtitle={`Automated emergency alert copy generated for the worst-affected zone on ${data.meta.focus.date}`}
       right={<Badge tone="flag">{a.severity}</Badge>}
     >

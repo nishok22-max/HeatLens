@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import type { Verdict } from "../plain";
+import { TONE_COLOUR } from "../metrics";
 
 /** A titled panel. The basic unit of the console layout. */
 export function Panel({
@@ -18,11 +20,11 @@ export function Panel({
     <section className={`card overflow-hidden ${className}`}>
       <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-line/80 bg-surface/60">
         <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-black text-ink leading-tight tracking-tight uppercase">
+          <h2 className="text-[16px] font-bold text-ink leading-tight tracking-tight">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-[12px] text-ink-soft mt-0.5 leading-snug font-medium">
+            <p className="text-[13px] text-ink-soft mt-0.5 leading-snug">
               {subtitle}
             </p>
           )}
@@ -73,6 +75,27 @@ export function statusTone(status: string): Tone {
   if (s.includes("not fitted") || s.includes("not calibrated")) return "flag";
   if (s.includes("assumed")) return "warn";
   return "warn";
+}
+
+/** A plain-language heat level, always as colour AND words. */
+export function LevelChip({
+  verdict,
+  size = "sm",
+}: {
+  verdict: Verdict;
+  size?: "sm" | "lg";
+}) {
+  const c = TONE_COLOUR[verdict.tone];
+  return (
+    <span
+      className={`inline-flex items-center rounded-md font-bold whitespace-nowrap ${
+        size === "lg" ? "px-3 py-1 text-[15px]" : "px-2 py-0.5 text-[12px]"
+      }`}
+      style={{ background: c.bg, color: c.ink }}
+    >
+      {verdict.label}
+    </span>
+  );
 }
 
 /** Label/value row for readouts. */

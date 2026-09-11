@@ -115,6 +115,22 @@ def main(config_path: str) -> None:
     night = np.array([export["cells"][c].get("lst_night_anomaly_c") or np.nan
                       for c in cells], dtype=float)
 
+    # OpenStreetMap land cover, carried through to DESCRIBE each zone -- the
+    # "built-up / green / water" text in the zone panel and the river and park
+    # outlines on the map. It is deliberately not an input to the offsets:
+    # scripts/13_compare_sources.py shows OSM features cannot locate heat in
+    # this city (held-out rank agreement with the satellite -0.18), so letting
+    # them touch d_ta would undo the measurement. Zeros when the file is absent.
+    osm_path = ROOT / "data" / "processed" / f"urban_form_{slug}.json"
+    osm = (json.loads(osm_path.read_text(encoding="utf-8"))
+           if osm_path.exists() else None)
+    osm_cells = osm["cells"] if osm else {}
+
+    def land_cover(cell):
+        raw = osm_cells.get(cell, {})
+        return {k: round(float(raw.get(k, 0.0)), 4)
+                for k in ("built", "roads", "green", "water")}
+
     out = {
         "city": city["name"],
         "h3_resolution": grid_cfg["h3_resolution"],
@@ -143,10 +159,10 @@ def main(config_path: str) -> None:
                     "lst_night_anomaly_c"),
                 "valid_obs": export["cells"][cell]["valid_px"],
                 "provenance": provenance[cell],
-                # Zero for every zone: the satellite path does not use the
-                # OpenStreetMap layers. Present so the schema stays a strict
-                # superset and no consumer has to special-case a missing key.
-                "built": 0.0, "roads": 0.0, "green": 0.0, "water": 0.0,
+                # Descriptive only -- see land_cover() above. Previously zero
+                # for every zone, which made the zone panel call riverside
+                # zones "almost no water" and removed the map's outlines.
+                **land_cover(cell),
             }
             for i, cell in enumerate(cells)
         },
@@ -177,9 +193,7 @@ def main(config_path: str) -> None:
               f"{np.nanmax(night) - np.nanmin(night):.2f} C "
               "(the pattern that matters for recovery)")
 
-    osm_path = ROOT / "data" / "processed" / f"urban_form_{slug}.json"
-    if osm_path.exists():
-        osm = json.loads(osm_path.read_text(encoding="utf-8"))
+    if osm:
         old = np.array([osm["cells"][c]["d_ta_c"] for c in cells])
         agreement = sat.rank_agreement(old, d_ta)
         print(f"\n{RULE}\nMEASURED vs THE METHOD IT REPLACES\n{RULE}")

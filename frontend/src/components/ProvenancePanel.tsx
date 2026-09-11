@@ -10,8 +10,8 @@ export function ProvenancePanel({ data }: { data: HeatData }) {
 
   return (
     <Panel
-      title="DATA PROVENANCE & MODEL TRANSPARENCY"
-      subtitle="Complete declaration of measured vs assumed data layers, standards, and physical caveats"
+      title="Data sources and known limits"
+      subtitle="Every data layer, where it comes from, and whether it is measured or assumed"
       right={
         <div className="text-right bg-flag-bg border border-flag/30 px-3.5 py-1.5 rounded-xl shadow-2xs">
           <div className="text-[22px] font-black tnum leading-none text-flag">

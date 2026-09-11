@@ -303,6 +303,156 @@ def _get_zone_detail(args: dict, payload: dict | None, live: bool) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# What-if / decision tools
+#
+# These read the scenario grid that scenario_grid.py pre-computed during the
+# bake. They never run physics and never interpolate: a requested value is
+# snapped to the nearest grid point and the snap is reported (DECISIONS D21),
+# so the LLM can only ever cite a number the Python produced.
+# ---------------------------------------------------------------------------
+
+def _load_insights(payload: dict | None, live: bool) -> tuple[dict, str]:
+    if payload and "insights" in payload:
+        return payload["insights"], "live_cache"
+    return _load_file("insights.json", live), _source_tag("insights.json", live)
+
+
+def _nearest(value: float, axis: list) -> float:
+    return min(axis, key=lambda candidate: abs(candidate - value))
+
+
+def _pct(fraction: float) -> int:
+    return int(round(fraction * 100))
+
+
+def _simulate_intervention(args: dict, payload: dict | None, live: bool) -> dict:
+    """Look up the modelled outcome of one intervention combination."""
+    ins, src = _load_insights(payload, live)
+    grid = ins.get("scenario_grid")
+    if not grid:
+        return {"error": "This dataset has no scenario grid.", "_source": src}
+    axes = grid["axes"]
+
+    shade_pct = args.get("shade_pct")
+    greening_pct = args.get("greening_pct")
+    shift = args.get("shift_start_hour")
+    persona = args.get("persona")
+    if shade_pct is None and greening_pct is None and shift is None:
+        return {"error": "Name at least one lever: shade_pct, greening_pct or "
+                         "shift_start_hour.", "_source": src}
+    for name, value, hi in (("shade_pct", shade_pct, 100),
+                            ("greening_pct", greening_pct, 100),
+                            ("shift_start_hour", shift, 23)):
+        if value is not None and not (0 <= float(value) <= hi):
+            return {"error": f"{name} must be between 0 and {hi}.", "_source": src}
+
+    out: dict = {"snaps": [], "_source": src, "basis": grid.get("basis", "")}
+
+    if shade_pct is not None or greening_pct is not None:
+        asked_s = float(shade_pct or 0) / 100
+        asked_g = float(greening_pct or 0) / 100
+        s = _nearest(asked_s, axes["shade"])
+        g = _nearest(asked_g, axes["greening"])
+        for name, asked, used in (("shade", asked_s, s), ("greening", asked_g, g)):
+            if _pct(asked) != _pct(used):
+                out["snaps"].append({"parameter": name, "asked": f"{_pct(asked)}%",
+                                     "used": f"{_pct(used)}%"})
+        row = next((r for r in grid["cooling"]
+                    if r["shade"] == s and r["greening"] == g), None)
+        if row is None:
+            return {"error": "No grid row for that shade/greening pair.", "_source": src}
+        out["cooling"] = {**row, "shade_pct": _pct(s), "greening_pct": _pct(g)}
+
+    if shift is not None:
+        who = persona or axes["persona"][0]
+        if who not in axes["persona"]:
+            return {"error": f"Unknown persona '{who}'. Valid: {axes['persona']}",
+                    "_source": src}
+        h = int(_nearest(int(shift), axes["shift_start"]))
+        if h != int(shift):
+            out["snaps"].append({"parameter": "shift_start", "asked": f"{int(shift)}:00",
+                                 "used": f"{h}:00"})
+        row = next((r for r in grid["scheduling"]
+                    if r["shift_start"] == h and r["persona"] == who), None)
+        if row is None:
+            return {"error": "No grid row for that shift/persona pair.", "_source": src}
+        out["scheduling"] = row
+    return out
+
+
+def _list_intervention_options(args: dict, payload: dict | None, live: bool) -> dict:
+    """Every modelled option, ranked, plus cost labels and what is not modelled."""
+    ins, src = _load_insights(payload, live)
+    grid = ins.get("scenario_grid")
+    if not grid:
+        return {"error": "This dataset has no scenario grid.", "_source": src}
+    cooling = sorted(
+        ({**r, "shade_pct": _pct(r["shade"]), "greening_pct": _pct(r["greening"])}
+         for r in grid["cooling"]),
+        key=lambda r: r["delta_c"])
+    scheduling = sorted(grid["scheduling"], key=lambda r: -r["reduction_pct"])
+    return {
+        "axes": {
+            "shade_pct": [_pct(v) for v in grid["axes"]["shade"]],
+            "greening_pct": [_pct(v) for v in grid["axes"]["greening"]],
+            "shift_start_hour": grid["axes"]["shift_start"],
+            "persona": grid["axes"]["persona"],
+        },
+        "cooling_ranked_most_cooling_first": cooling,
+        "scheduling_ranked_biggest_reduction_first": scheduling,
+        "headline_scenarios_with_cost": [
+            {k: s.get(k) for k in ("key", "label", "detail", "cost", "basis")}
+            for s in ins.get("scenarios", [])
+        ],
+        "not_modelled": ins.get("omitted", []),
+        "basis": grid.get("basis", ""),
+        "_source": src,
+    }
+
+
+def _get_hottest_zones(args: dict, payload: dict | None, live: bool) -> dict:
+    """Hottest neighbourhoods at the focus hour, one row per named place."""
+    n = max(1, min(int(args.get("n", 5) or 5), 15))
+    if payload and ("map" in payload or "hexes" in payload):
+        hexes = payload.get("map") or payload.get("hexes")
+        meta = payload.get("meta", {})
+        src = "live_cache"
+    else:
+        hexes = _load_file("hexes.geojson", live)
+        meta = _load_file("meta.json", live)
+        src = _source_tag("hexes.geojson", live)
+
+    rows, seen = [], set()
+    for f in sorted(hexes.get("features", []),
+                    key=lambda f: -(f["properties"].get("utci_focus") or -1e9)):
+        p = f["properties"]
+        key = p.get("place") or p["h3_index"]
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append({
+            "place": (p.get("place") if p.get("place_exact", True)
+                      else f"near {p.get('place')}") if p.get("place") else None,
+            "hex_id": p["h3_index"],
+            "utci_c": p.get("utci_focus"),
+            "wbgt_c": p.get("wbgt_focus"),
+            "relative_risk": p.get("risk_focus"),
+            "peak_hour_ist": p.get("peak_hour"),
+        })
+        if len(rows) == n:
+            break
+    focus = meta.get("focus", {})
+    return {
+        "focus_date": focus.get("date"),
+        "focus_hour_ist": focus.get("hour_ist"),
+        "zones": rows,
+        "_note": "Names are the nearest OpenStreetMap place, not ward boundaries. "
+                 "relative_risk is relative, not calibrated.",
+        "_source": src,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -314,6 +464,9 @@ TOOL_IMPLS: dict[str, Any] = {
     "get_metadata": _get_metadata,
     "get_work_safety_window": _get_work_safety_window,
     "get_zone_detail": _get_zone_detail,
+    "simulate_intervention": _simulate_intervention,
+    "list_intervention_options": _list_intervention_options,
+    "get_hottest_zones": _get_hottest_zones,
 }
 
 
@@ -441,6 +594,63 @@ TOOL_SPECS: list[dict] = [
                     }
                 },
                 "required": ["hex_id"],
+            },
+        }
+    },
+    {
+        "function": {
+            "name": "simulate_intervention",
+            "description": (
+                "Returns the modelled before/after outcome of ONE intervention combination, "
+                "looked up from the pre-computed physics grid. Levers: shade over outdoor work "
+                "areas (shade_pct), extra vegetation in the hottest 25% of zones (greening_pct), "
+                "and moving the working day to start at shift_start_hour for a persona. "
+                "Values are snapped to the nearest grid point and every snap is reported. "
+                "Call once per option you want to compare."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "shade_pct": {"type": "number",
+                                  "description": "Percent of direct sun blocked, 0-100."},
+                    "greening_pct": {"type": "number",
+                                     "description": "Percent more vegetation in the hottest zones, 0-100."},
+                    "shift_start_hour": {"type": "integer",
+                                         "description": "Hour (0-23) the working day starts."},
+                    "persona": {"type": "string",
+                                "description": "Who the shift result is for.",
+                                "enum": ["construction", "delivery", "child", "elderly"]},
+                },
+                "required": [],
+            },
+        }
+    },
+    {
+        "function": {
+            "name": "list_intervention_options",
+            "description": (
+                "Returns EVERY modelled intervention option ranked by effect (cooling rows by "
+                "felt-heat reduction, scheduling rows by unsafe-hour reduction), the grid axes, "
+                "cost labels for the headline scenarios, and what is NOT modelled. Use this to "
+                "compare options, find the most effective or cheapest, or answer 'what should we do'."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        }
+    },
+    {
+        "function": {
+            "name": "get_hottest_zones",
+            "description": (
+                "Returns the hottest neighbourhoods at the focus hour by felt heat (UTCI), one row "
+                "per named place, with WBGT, relative risk and each zone's peak hour. Use for "
+                "'where should we act first' questions."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "n": {"type": "integer", "description": "How many zones, 1-15. Default 5."},
+                },
+                "required": [],
             },
         }
     },

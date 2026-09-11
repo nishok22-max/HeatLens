@@ -283,3 +283,28 @@ class TestCommittedOffsets:
     def test_night_temperatures_are_cooler_than_day(self):
         out = self._load()
         assert out["night_city_mean_lst_c"] < out["city_mean_lst_c"]
+
+    def test_land_cover_is_carried_from_openstreetmap(self):
+        """Describes zones (panel text, river/park outlines). It was once zeroed
+        in every zone, which called riverside zones 'almost no water'."""
+        osm_path = ROOT / "data" / "processed" / "urban_form_ahmedabad.json"
+        if not osm_path.exists():
+            pytest.skip("OpenStreetMap form not built")
+        osm = json.loads(osm_path.read_text(encoding="utf-8"))["cells"]
+        cells = self._load()["cells"]
+        for key in ("roads", "green", "water"):
+            assert any(r[key] > 0 for r in cells.values()), f"{key} is all zero"
+        for cell, record in cells.items():
+            for key in ("built", "roads", "green", "water"):
+                assert record[key] == pytest.approx(osm[cell][key], abs=1e-4)
+
+    def test_land_cover_does_not_touch_the_offsets(self):
+        """OSM describes; the satellite locates. scripts/13_compare_sources.py
+        shows OSM features cannot rank heat here, so they must not leak in."""
+        out = self._load()
+        for record in out["cells"].values():
+            assert record["d_ta_c"] == pytest.approx(
+                out["alpha"] * record["lst_anomaly_c"], abs=1e-3)
+        roads = np.array([r["roads"] for r in out["cells"].values()])
+        offsets = np.array([r["d_ta_c"] for r in out["cells"].values()])
+        assert abs(np.corrcoef(roads, offsets)[0, 1]) < 0.5

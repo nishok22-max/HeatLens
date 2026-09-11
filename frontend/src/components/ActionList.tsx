@@ -12,8 +12,8 @@ const ICONS = ["⏱️", "💧", "🛡️", "🌙", "📋"];
 export function ActionList({ insights }: { insights: Insights }) {
   return (
     <Panel
-      title="WHAT SHOULD AUTHORITIES DO? (RECOMMENDED ACTIONS)"
-      subtitle="Operational public health guidance ranked by impact and threshold safety"
+      title="Recommended actions"
+      subtitle="Worked out from safety thresholds, ranked by impact"
     >
       <ul className="space-y-3.5">
         {insights.actions.map((a, i) => {

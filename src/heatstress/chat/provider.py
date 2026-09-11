@@ -35,6 +35,7 @@ class LLMMessage:
     # When role=="tool", the result of executing a tool call.
     tool_name: str | None = None
     tool_result: Any = None
+    raw_parts: Any = None
 
 
 @dataclass
@@ -43,6 +44,7 @@ class LLMResponse:
     text: str | None
     tool_calls: list[ToolCall]
     stop_reason: str   # "tool_use" | "end_turn" | "max_tokens"
+    raw_parts: Any = None
 
 
 # ---------------------------------------------------------------------------

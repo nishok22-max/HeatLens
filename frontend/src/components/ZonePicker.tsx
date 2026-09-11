@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import type { HeatData, MetricKey } from "../types";
 import { METRICS, formatValue } from "../metrics";
 
+/** Compact "find a place" box for the heat-map header. Picking a name selects
+ *  that place's hottest zone at the current hour. */
 export function ZonePicker({
   data,
   metric,
@@ -37,53 +39,30 @@ export function ZonePicker({
   if (!options.length) return null;
 
   const selectedName =
-    data.hexes.features.find((f) => f.properties.h3_index === selected)
-      ?.properties.place ?? "";
+    data.hexes.features.find((f) => f.properties.h3_index === selected)?.properties.place ?? "";
 
   return (
-    <div className="mt-1 space-y-2">
-      <label
-        htmlFor="zone-picker"
-        className="block text-[10px] uppercase tracking-wider font-black text-ink-faint"
-      >
-        Select a Neighbourhood Zone ({options.length} locations)
+    <div>
+      <label htmlFor="zone-picker" className="block text-[12px] text-ink-soft mb-1">
+        Find a neighbourhood ({options.length} named places)
       </label>
-      <div className="relative">
-        <select
-          id="zone-picker"
-          value={selectedName}
-          onChange={(e) => {
-            const hit = options.find((o) => o.name === e.target.value);
-            if (hit) onSelect(hit.h3);
-          }}
-          className="w-full bg-surface border border-line-strong/60 rounded-xl px-3.5 py-2.5 text-[13px] text-ink font-bold hover:border-accent focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all cursor-pointer shadow-2xs"
-        >
-          <option value="">Choose an area from the list…</option>
-          {options.map((o) => (
-            <option key={o.name} value={o.name}>
-              {o.name} — {formatValue(o.value, def)} ({def.short})
-            </option>
-          ))}
-        </select>
-      </div>
-      {selected && (
-        <div className="pt-2 border-t border-line/60 flex items-center justify-between">
-          <span className="text-[11px] text-ink-soft font-semibold">Selected: <strong className="text-ink font-black">{selectedName}</strong></span>
-          <button
-            onClick={() => onSelect(selected)}
-            className="text-[12px] font-black text-accent hover:underline flex items-center gap-1"
-          >
-            <span>Focus Ward Risk</span>
-            <span>→</span>
-          </button>
-        </div>
-      )}
-      <p className="text-[11px] leading-relaxed text-ink-faint font-medium">
-        Landmark locations derived from OpenStreetMap. Selecting an area focuses its highest-reading H3 zone at this hour.
-      </p>
+      <select
+        id="zone-picker"
+        value={selectedName}
+        onChange={(e) => {
+          const hit = options.find((o) => o.name === e.target.value);
+          if (hit) onSelect(hit.h3);
+        }}
+        title="Names are the nearest OpenStreetMap place, not official ward boundaries. Picking a place selects its hottest zone at this hour."
+        className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-[14px] text-ink hover:border-accent focus:ring-2 focus:ring-accent/20 focus:border-accent cursor-pointer"
+      >
+        <option value="">Choose a place…</option>
+        {options.map((o) => (
+          <option key={o.name} value={o.name}>
+            {o.name} · {formatValue(o.value, def)}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
-
-
-

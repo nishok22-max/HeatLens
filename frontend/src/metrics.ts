@@ -117,7 +117,24 @@ export function formatValue(value: number, metric: MetricDef): string {
  *  states the active mode and the numeric domain, so a reader can never mistake
  *  a rescaled frame for an absolute one.
  */
-export type ScaleMode = "absolute" | "contrast";
+export type ScaleMode = "levels" | "absolute" | "contrast";
+
+/** Discrete colours for the five plain-language levels (see plain.ts).
+ *  A magma-family ordinal ramp, checked with the dataviz validator
+ *  (`validate_palette.js --ordinal`, white surface): monotone light->dark,
+ *  every step gap >= 0.06 L, single hue family, and the palest step clears
+ *  2:1 against the card (2.07:1) -- the earlier #fde7c0 did not (1.21:1).
+ *  Every use pairs the colour with the level's name (WCAG 1.4.1). */
+export const TONE_COLOUR: Record<
+  "low" | "moderate" | "high" | "severe" | "critical",
+  { bg: string; ink: string }
+> = {
+  low: { bg: "#eba660", ink: "#1b1a17" },
+  moderate: { bg: "#e2753f", ink: "#1b1a17" },
+  high: { bg: "#cf485b", ink: "#ffffff" },
+  severe: { bg: "#9b2c78", ink: "#ffffff" },
+  critical: { bg: "#4d1471", ink: "#ffffff" },
+};
 
 /** Domain for a metric, preferring one supplied by the dataset.
  *  A dataset baked from a 33 degC humid week needs different limits from one

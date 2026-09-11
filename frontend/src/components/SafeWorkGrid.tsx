@@ -38,10 +38,12 @@ export function SafeWorkGrid({
     { run: 0, best: 0 },
   ).best;
 
+  const heavy = data.personas.personas.construction;
+
   return (
     <Panel
-      title="OCCUPATIONAL WORK SAFETY WINDOWS (ISO 7243 / ACGIH)"
-      subtitle={`Permissible outdoor working minutes per hour across labor personas · ${data.personas.date}`}
+      title="Safe outdoor work, hour by hour"
+      subtitle={`Minutes per hour each group can safely work outdoors · ${data.personas.date}`}
       right={
         <div className="text-right bg-flag-bg border border-flag/30 px-3.5 py-1.5 rounded-xl shadow-2xs">
           <div className="text-[22px] font-black tnum leading-none text-flag">
@@ -151,7 +153,24 @@ export function SafeWorkGrid({
 
       <div className="mt-4 p-3.5 bg-brand-soft/70 border border-brand/30 rounded-xl shadow-2xs">
         <p className="text-[12px] leading-relaxed text-ink font-medium">
-          Outdoor construction workers experienced <strong className="text-brand font-black">zero full-capacity working hours</strong> during the entire day. For <strong className="text-brand font-black">{longestRun} consecutive hours</strong>, no persona could safely work outdoors under ISO 7243 limits.
+          {heavy && (
+            <>
+              {heavy.label} get{" "}
+              <strong className="text-brand font-bold">
+                {heavy.full_capacity_hours.length === 0
+                  ? "no full-capacity working hours"
+                  : `${heavy.full_capacity_hours.length} full-capacity working hour${heavy.full_capacity_hours.length === 1 ? "" : "s"}`}
+              </strong>{" "}
+              on this day.{" "}
+            </>
+          )}
+          {longestRun > 0 ? (
+            <>
+              For <strong className="text-brand font-bold">{longestRun} consecutive hour{longestRun === 1 ? "" : "s"}</strong>, nobody in any group can safely work outdoors under ISO 7243 limits.
+            </>
+          ) : (
+            "There is no hour when every group is barred from outdoor work."
+          )}
         </p>
       </div>
 

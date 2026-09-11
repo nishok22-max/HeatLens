@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import type { HeatData } from "../types";
 import { Note, Panel } from "./ui";
+import { weatherSource } from "../summary";
 
 const RECOVERY_THRESHOLD_C = 27;
 
@@ -27,8 +28,8 @@ export function NightRecovery({ data }: { data: HeatData }) {
 
   return (
     <Panel
-      title="NIGHT-TIME COOLING RECOVERY DEFICIT"
-      subtitle="Overnight minimum air temperature (22:00 – 06:00 IST) across event nights"
+      title="Did the nights cool down?"
+      subtitle="Lowest overnight air temperature each night (22:00 to 06:00). Bodies need cool nights to recover."
       right={
         <div className="text-right bg-flag-bg border border-flag/30 px-3.5 py-1.5 rounded-xl shadow-2xs">
           <div className="text-[22px] font-black tnum leading-none text-flag">
@@ -51,7 +52,7 @@ export function NightRecovery({ data }: { data: HeatData }) {
               tickLine={false}
             />
             <YAxis
-              domain={[24, 32]}
+              domain={[(min: number) => Math.floor(Math.min(min, RECOVERY_THRESHOLD_C) - 1), (max: number) => Math.ceil(Math.max(max, RECOVERY_THRESHOLD_C) + 1)]}
               tick={{ fontSize: 11, fill: "#475569", fontWeight: 700 }}
               axisLine={false}
               tickLine={false}
@@ -105,7 +106,7 @@ export function NightRecovery({ data }: { data: HeatData }) {
       </div>
 
       <Note>
-        Data source: ERA5 city-mean air temperature. High thermal mass housing (metal/asbestos roofs) retains heat longer into the night.
+        Data source: {weatherSource(data)}, city-average air temperature. Homes with metal or asbestos roofs hold heat longer into the night.
       </Note>
     </Panel>
   );

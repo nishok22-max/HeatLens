@@ -4,11 +4,14 @@ import type { ScaleMode } from "../metrics";
 import {
   METRICS,
   RAMP,
+  TONE_COLOUR,
   colourInDomain,
   domainFor,
   formatValue,
   paddedDomain,
 } from "../metrics";
+import { levelBands, verdictFor } from "../plain";
+import { placeName } from "../summary";
 
 /**
  * The console map — hand-rolled SVG rather than MapLibre.
@@ -85,7 +88,7 @@ export function HexMap({
   // values actually present at this hour, which is the only way the intra-city
   // pattern is visible at the peak of the event.
   const domain = useMemo<[number, number]>(() => {
-    if (scaleMode === "absolute") return domainFor(metric, data.meta.domains);
+    if (scaleMode !== "contrast") return domainFor(metric, data.meta.domains);
     const values = data.hexes.features
       .map((f) => data.hourly.hexes[f.properties.h3_index]?.[metric][hour])
     if (!values.length) return domainFor(metric, data.meta.domains);
@@ -137,17 +140,22 @@ export function HexMap({
           const series = data.hourly.hexes[props.h3_index];
           const value = series ? series[metric][hour] : NaN;
           const isSelected = props.h3_index === selected;
+          const level = verdictFor(metric, value);
           return (
             <polygon
               key={props.h3_index}
               points={points}
-              fill={colourInDomain(value, domain)}
+              fill={
+                scaleMode === "levels"
+                  ? Number.isFinite(value) ? TONE_COLOUR[level.tone].bg : "#cccccc"
+                  : colourInDomain(value, domain)
+              }
               stroke={isSelected ? "#101010" : "#ffffff"}
               strokeWidth={isSelected ? 3 : 0.5}
               strokeOpacity={isSelected ? 1 : 0.55}
               tabIndex={0}
               role="button"
-              aria-label={`Zone ending ${props.h3_index.slice(-6)}, ${def.label} ${formatValue(value, def)}`}
+              aria-label={`${placeName(props)}: ${level.label}, ${def.plain} ${formatValue(value, def)}`}
               style={{ cursor: "pointer", outline: "none" }}
               onClick={() => onSelect(props.h3_index)}
               onKeyDown={(e) => {
@@ -193,13 +201,14 @@ export function HexMap({
       {/* Hover readout overlay */}
       {active && activeSeries && (
         <div className="absolute top-3 left-3 bg-surface/95 backdrop-blur-md border border-line-strong/60 rounded-xl px-3.5 py-2 pointer-events-none shadow-md">
-          <div className="text-[11px] font-extrabold uppercase text-accent tracking-wider leading-tight">
-            {activeProps?.place
-              ? `${activeProps.place_exact ? "" : "Near "}${activeProps.place}`
-              : "Unnamed Zone"}
+          <div className="text-[13px] font-semibold text-ink leading-tight">
+            {activeProps ? placeName(activeProps) : "Unnamed zone"}
           </div>
-          <div className="text-[18px] font-black tnum text-ink leading-tight mt-0.5">
-            {formatValue(activeSeries[metric][hour], def)} <span className="text-[11px] font-bold text-ink-soft">({def.plain})</span>
+          <div className="text-[18px] font-bold tnum text-ink leading-tight mt-0.5">
+            {verdictFor(metric, activeSeries[metric][hour]).label}{" "}
+            <span className="text-[13px] font-medium text-ink-soft">
+              · {formatValue(activeSeries[metric][hour], def)}
+            </span>
           </div>
         </div>
       )}
@@ -246,39 +255,58 @@ function Legend({
 }) {
   const def = METRICS[metric];
   const [lo, hi] = domain;
+  const modeLabel =
+    scaleMode === "levels"
+      ? "Fixed heat levels"
+      : scaleMode === "contrast"
+        ? "Relative to this hour: red = hottest now, not necessarily dangerous"
+        : "Fixed range across the day";
   return (
-    <div className="absolute bottom-3 left-3 bg-surface/95 backdrop-blur-md border border-line-strong/60 rounded-xl px-3.5 py-2.5 shadow-md max-w-xs">
-      <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <span className="text-[10px] uppercase tracking-wider font-black text-ink">
-          {def.plain} Ramp
-        </span>
-        <span
-          className={`text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.2 rounded ${
-            scaleMode === "contrast" ? "bg-flag-bg text-flag border border-flag/20" : "bg-sunken text-ink-faint"
-          }`}
-        >
-          {scaleMode === "contrast" ? "Hour Scaled" : "Absolute Scale"}
-        </span>
+    <div className="absolute bottom-3 left-3 bg-surface/95 backdrop-blur-md border border-line-strong/60 rounded-xl px-3.5 py-2.5 shadow-md max-w-[16rem]">
+      <div className="text-[12px] font-semibold text-ink">{def.plain}</div>
+      <div
+        className={`text-[11px] leading-snug mb-2 ${scaleMode === "contrast" ? "text-flag font-semibold" : "text-ink-faint"}`}
+      >
+        {modeLabel}
       </div>
-      <div className="flex h-3 w-56 overflow-hidden rounded-md border border-line/80 shadow-2xs">
-        {RAMP.map((c) => (
-          <div key={c} className="flex-1" style={{ background: c }} />
-        ))}
-      </div>
-      <div className="flex justify-between w-56 mt-1 text-[10px] text-ink-faint font-bold uppercase tracking-wide">
-        <span>🟢 Safer</span>
-        <span>🔴 Dangerous</span>
-      </div>
-      <div className="flex justify-between w-56 text-[10px] tnum font-black text-ink">
-        <span>{formatValue(lo, def)}</span>
-        <span>{formatValue(hi, def)}</span>
-      </div>
-      <div className="mt-2 pt-1.5 border-t border-line/60 flex gap-4 text-[10px] text-ink-faint font-bold">
+      {scaleMode === "levels" ? (
+        <ul className="space-y-1">
+          {levelBands(metric)
+            .slice()
+            .reverse()
+            .map((b) => (
+              <li key={b.verdict.label} className="flex items-center gap-2 text-[12px] text-ink">
+                <span
+                  className="inline-block w-4 h-3 rounded-sm border border-line/60"
+                  style={{ background: TONE_COLOUR[b.verdict.tone].bg }}
+                  aria-hidden
+                />
+                <span className="flex-1">{b.verdict.label}</span>
+                <span className="tnum text-ink-faint">
+                  {Number.isFinite(b.from) ? `≥ ${formatValue(b.from, def)}` : ""}
+                </span>
+              </li>
+            ))}
+        </ul>
+      ) : (
+        <>
+          <div className="flex h-3 w-56 overflow-hidden rounded-md border border-line/80">
+            {RAMP.map((c) => (
+              <div key={c} className="flex-1" style={{ background: c }} />
+            ))}
+          </div>
+          <div className="flex justify-between w-56 mt-1 text-[11px] tnum text-ink">
+            <span>{formatValue(lo, def)}</span>
+            <span>{formatValue(hi, def)}</span>
+          </div>
+        </>
+      )}
+      <div className="mt-2 pt-1.5 border-t border-line/60 flex gap-4 text-[11px] text-ink-faint">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-1 rounded-full bg-[#2b6ca3]" /> Water Body
+          <span className="inline-block w-3 h-1 rounded-full bg-[#2b6ca3]" /> Water
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-1 rounded-full bg-[#3f7d43]" /> Parks/Greenery
+          <span className="inline-block w-3 h-1 rounded-full bg-[#3f7d43]" /> Parks and greenery
         </span>
       </div>
     </div>
