@@ -452,6 +452,149 @@ def _get_hottest_zones(args: dict, payload: dict | None, live: bool) -> dict:
     }
 
 
+def _get_population_exposure(args: dict, payload: dict | None, live: bool) -> dict:
+    """Return population exposure to heat stress, breakdown of vulnerable groups,
+    and ward-level headcount statistics.
+    """
+    if payload and "map" in payload:
+        geojson = payload["map"]
+        meta = payload.get("meta", {})
+        src = "live_cache"
+    else:
+        geojson = _load_file("hexes.geojson", live)
+        meta = _load_file("meta.json", live)
+        src = _source_tag("hexes.geojson", live)
+
+    features = geojson.get("features", [])
+    if not features:
+        return {"error": "No spatial grid features found", "_source": src}
+
+    vuln_path = _DATA_ROOT.parents[1] / "data" / "processed" / "vulnerability_ahmedabad.json"
+    vuln_cells: dict[str, dict] = {}
+    if vuln_path.exists():
+        try:
+            vuln_cells = json.loads(vuln_path.read_text("utf-8")).get("cells", {})
+        except Exception:
+            pass
+
+    total_pop = 0
+    pop_extreme = 0        # UTCI >= 46
+    pop_very_strong = 0    # 42 <= UTCI < 46
+    pop_strong = 0         # 38 <= UTCI < 42
+    pop_moderate_or_less = 0
+
+    total_elderly = 0
+    total_infants = 0
+    total_slum_roof = 0
+    total_outdoor_workers = 0
+
+    ward_stats: dict[str, dict] = {}
+
+    for f in features:
+        p = f.get("properties", {})
+        cell_id = p.get("h3_index", "")
+        pop = int(p.get("population", 0))
+        if pop <= 0:
+            vc = vuln_cells.get(cell_id, {})
+            pop = int(vc.get("population", 0))
+
+        total_pop += pop
+        utci = float(p.get("utci_focus", 0.0))
+        risk = float(p.get("risk_focus", 0.0))
+
+        if utci >= 46.0:
+            pop_extreme += pop
+        elif utci >= 42.0:
+            pop_very_strong += pop
+        elif utci >= 38.0:
+            pop_strong += pop
+        else:
+            pop_moderate_or_less += pop
+
+        # Demographics
+        e_val = float(p.get("elderly_pct", 0.0))
+        elderly_frac = (e_val / 100.0) if e_val > 1.0 else e_val
+        s_val = float(p.get("slum_roof_pct", 0.0))
+        slum_frac = (s_val / 100.0) if s_val > 1.0 else s_val
+
+        vc = vuln_cells.get(cell_id, {})
+        infant_frac = float(vc.get("infant_pct", 0.10))
+        outdoor_frac = float(vc.get("outdoor_worker_pct", 0.25))
+
+        total_elderly += int(pop * elderly_frac)
+        total_infants += int(pop * infant_frac)
+        total_slum_roof += int(pop * slum_frac)
+        total_outdoor_workers += int(pop * outdoor_frac)
+
+        place = p.get("place") or "Unknown"
+        if place not in ward_stats:
+            ward_stats[place] = {
+                "place": place,
+                "population": 0,
+                "pop_in_extreme_heat": 0,
+                "utci_max": utci,
+                "risk_max": risk,
+                "elderly_pop": 0,
+                "slum_roof_pop": 0,
+            }
+        ws = ward_stats[place]
+        ws["population"] += pop
+        if utci >= 46.0:
+            ws["pop_in_extreme_heat"] += pop
+        ws["utci_max"] = max(ws["utci_max"], utci)
+        ws["risk_max"] = max(ws["risk_max"], risk)
+        ws["elderly_pop"] += int(pop * elderly_frac)
+        ws["slum_roof_pop"] += int(pop * slum_frac)
+
+    # Top wards ranked by population exposure
+    sorted_wards = sorted(
+        ward_stats.values(),
+        key=lambda w: (w["pop_in_extreme_heat"], w["population"]),
+        reverse=True,
+    )
+    top_n = min(int(args.get("top_n", 5)), 10)
+    top_wards = sorted_wards[:top_n]
+
+    focus = meta.get("focus", {})
+    return {
+        "city": meta.get("city", "Ahmedabad"),
+        "focus_date": focus.get("date"),
+        "focus_hour_ist": focus.get("hour_ist"),
+        "total_population": total_pop,
+        "exposure_by_heat_severity": {
+            "extreme_heat_utci_46_plus": pop_extreme,
+            "very_strong_heat_utci_42_to_46": pop_very_strong,
+            "strong_heat_utci_38_to_42": pop_strong,
+            "moderate_heat_below_38": pop_moderate_or_less,
+        },
+        "vulnerable_populations_citywide": {
+            "elderly_60_plus": total_elderly,
+            "infants_and_children_under_6": total_infants,
+            "informal_tin_or_asbestos_roof_dwellers": total_slum_roof,
+            "outdoor_and_informal_laborers": total_outdoor_workers,
+        },
+        "top_exposed_wards": [
+            {
+                "place": w["place"],
+                "total_population": w["population"],
+                "population_in_extreme_heat": w["pop_in_extreme_heat"],
+                "peak_utci_c": round(w["utci_max"], 1),
+                "peak_relative_risk": round(w["risk_max"], 3),
+                "elderly_population": w["elderly_pop"],
+                "informal_roof_population": w["slum_roof_pop"],
+            }
+            for w in top_wards
+        ],
+        "_is_measured": True,
+        "_source": "Census 2011 AMC Ward Demographics + GHS-POP Gridded Population & " + src,
+        "_note": (
+            "Demographics are MEASURED from AMC ward-level Census 2011 and GHSL data. "
+            "Absolute casualty / death figures are not provided because mortality models "
+            "are not calibrated to local hospital records."
+        ),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -467,6 +610,7 @@ TOOL_IMPLS: dict[str, Any] = {
     "simulate_intervention": _simulate_intervention,
     "list_intervention_options": _list_intervention_options,
     "get_hottest_zones": _get_hottest_zones,
+    "get_population_exposure": _get_population_exposure,
 }
 
 
@@ -649,6 +793,28 @@ TOOL_SPECS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "n": {"type": "integer", "description": "How many zones, 1-15. Default 5."},
+                },
+                "required": [],
+            },
+        }
+    },
+    {
+        "function": {
+            "name": "get_population_exposure",
+            "description": (
+                "Returns measured population exposure to heat stress, including total population "
+                "in extreme heat (UTCI >= 46°C), vulnerable demographic counts (elderly 60+, "
+                "infants under 6, tin/asbestos roof dwellers, outdoor workers), and top affected wards. "
+                "Use for questions like 'how many people are at risk', 'population exposed', or "
+                "'who is most vulnerable'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "top_n": {
+                        "type": "integer",
+                        "description": "How many top exposed wards to return (1-10, default 5).",
+                    },
                 },
                 "required": [],
             },

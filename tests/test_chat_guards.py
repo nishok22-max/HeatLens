@@ -86,6 +86,18 @@ class TestRefusalTable:
         assert self._check("HOW MANY PEOPLE ARE AT RISK?") is not None
         assert self._check("is heatlens validated?") is not None
 
+    def test_allows_population_queries_when_measured(self):
+        from heatstress.chat.guards import RefusalTable
+        rt = RefusalTable(has_population_data=True)
+        assert rt.check("How many people are at risk?") is None
+        assert rt.check("Give me a headcount of people exposed") is None
+        assert rt.check("What is the population at risk?") is None
+        # But casualty and death questions are STILL refused!
+        assert rt.check("What is the death count?") is not None
+        assert rt.check("How many casualties were there?") is not None
+        assert rt.check("How many will die?") is not None
+        assert rt.check("What is the death toll?") is not None
+
 
 # ---------------------------------------------------------------------------
 # Numeric guard

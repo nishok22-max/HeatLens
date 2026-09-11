@@ -53,10 +53,6 @@ REFUSAL_RULES: list[RefusalRule] = [
             r"number of people",
             r"population at risk",
             r"headcount",
-            r"casualt",          # casualties / casualty
-            r"death.{0,10}count",
-            r"mortality count",
-            r"fatalities",
         ],
         reason="population_placeholder",
         response=(
@@ -87,11 +83,18 @@ REFUSAL_RULES: list[RefusalRule] = [
     ),
     RefusalRule(
         patterns=[
+            r"casualt",          # casualties / casualty
+            r"\bdeaths?\b",
+            r"death.{0,10}count",
+            r"mortality",
+            r"fatalit",
+            r"hospitali",
             r"exact(ly)? how many deaths",
             r"total deaths",
             r"death toll",
             r"how many died",
-            r"how many will die",
+            r"how many.{0,15}die",
+            r"will die",
         ],
         reason="death_count_uncalibrated",
         response=(
@@ -101,7 +104,7 @@ REFUSAL_RULES: list[RefusalRule] = [
             "I can show you relative risk by zone, or the ISO 7243 safe-work windows — "
             "both are grounded in the data we actually have."
         ),
-        version=1,
+        version=2,
     ),
 ]
 
@@ -109,8 +112,19 @@ REFUSAL_RULES: list[RefusalRule] = [
 class RefusalTable:
     """Check a question against the refusal table before hitting the LLM."""
 
-    def __init__(self, rules: list[RefusalRule] | None = None):
-        self._rules = rules or REFUSAL_RULES
+    def __init__(
+        self,
+        rules: list[RefusalRule] | None = None,
+        has_population_data: bool = False,
+    ):
+        base_rules = rules or REFUSAL_RULES
+        if has_population_data:
+            # When population data is measured, loosen the headcount refusal
+            # so the agent can route to get_population_exposure. Casualties/deaths STAY refused.
+            self._rules = [r for r in base_rules if r.reason != "population_placeholder"]
+        else:
+            self._rules = list(base_rules)
+
         self._compiled = [
             (
                 rule,

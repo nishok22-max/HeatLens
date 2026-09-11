@@ -58,6 +58,7 @@ export interface Meta {
   provenance: ProvenanceEntry[];
   caveats: Caveat[];
   is_placeholder_urban: boolean;
+  is_placeholder_vulnerability?: boolean;
   exposure_response: {
     metric: string;
     mmt_c: number;
@@ -83,6 +84,9 @@ export interface HexProperties {
   water: number;
   exposure: number;
   vulnerability: number;
+  population?: number;
+  elderly_pct?: number;
+  slum_roof_pct?: number;
   peak_hour: number;
   wbgt_focus: number;
   utci_focus: number;

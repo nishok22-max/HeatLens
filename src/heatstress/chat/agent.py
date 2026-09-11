@@ -52,6 +52,11 @@ CORE RULES (non-negotiable):
    held-out satellite observations" when that is what you mean.
 5. If a tool returns an error, say so clearly and offer an alternative.
 6. Be concise. Municipal officers and health workers need facts, not essays.
+7. When asked about population exposure, vulnerable demographics, or people at risk,
+   call get_population_exposure. Cite the exact measured demographic figures (elderly 60+,
+   children under 6, tin/asbestos roof dwellers, outdoor laborers) and top wards.
+   Clarify that mortality / casualty counts are not provided because mortality models
+   are not calibrated to hospital records.
 
 GENERAL HEALTH KNOWLEDGE (when no tool covers the topic):
 - If the user asks a general physiology, first-aid, or public-health question
@@ -78,6 +83,7 @@ STYLE:
 
 SUGGESTED_QUESTIONS = [
     "What is the peak UTCI today and which zone is hottest?",
+    "How many people and vulnerable residents are exposed to extreme heat?",
     "When is it safe for construction workers to be outside?",
     "What is driving the heat stress — temperature, humidity, or sun?",
     "What would happen if we greened the hottest neighbourhoods?",
@@ -145,7 +151,10 @@ def run_agent(
     live = dataset == "live"
 
     # 1. Refusal check (before any LLM call — saves tokens and is guaranteed).
-    refusal_table = RefusalTable()
+    from pathlib import Path
+    vuln_path = Path(__file__).resolve().parents[3] / "data" / "processed" / "vulnerability_ahmedabad.json"
+    has_pop = vuln_path.exists()
+    refusal_table = RefusalTable(has_population_data=has_pop)
     refusal = refusal_table.check(question)
     if refusal:
         return AgentResponse(

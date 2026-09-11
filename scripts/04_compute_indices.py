@@ -114,7 +114,14 @@ def main(config_path: str, urban_form_path: str | None = None) -> None:
     # -- risk -------------------------------------------------------------
     print("  composing risk...")
     hazard = rk.normalise_hazard(wbgt)
-    surface = vu.PlaceholderVulnerability().build(cells, intensity=intensity)
+    vuln_file = ROOT / "data" / "processed" / f"vulnerability_{slug}.json"
+    if vuln_file.exists():
+        print(f"  using measured ward vulnerability: {vuln_file.name}")
+        surface = vu.CensusWardVulnerability(vuln_file).build(cells)
+    else:
+        print("  using placeholder vulnerability")
+        surface = vu.PlaceholderVulnerability().build(cells, intensity=intensity)
+
     risk = vu.combine_risk(hazard,
                            np.broadcast_to(surface.exposure[None, :], ta.shape),
                            np.broadcast_to(surface.vulnerability[None, :], ta.shape))
@@ -136,6 +143,7 @@ def main(config_path: str, urban_form_path: str | None = None) -> None:
         exposure=surface.exposure.astype(np.float32),
         vulnerability=surface.vulnerability.astype(np.float32),
         is_placeholder_urban=bool(form.get("SYNTHETIC_PLACEHOLDER", False)),
+        is_placeholder_vulnerability=bool(surface.is_placeholder),
     )
 
     focus = f"{hind['focus_date']} {hind['focus_hour_ist']:02d}"

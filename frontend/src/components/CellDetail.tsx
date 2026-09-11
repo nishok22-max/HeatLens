@@ -172,6 +172,18 @@ export function CellDetail({
 
           {/* 4 — Who */}
           <Block n={4} title="Who is at risk?" sub={`Safe minutes of outdoor work per hour at ${label}`}>
+            {p.population && p.population > 0 && (
+              <div className="mb-3 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-line text-[12px] space-y-1">
+                <div className="flex justify-between items-center text-ink font-semibold">
+                  <span>Measured Ward Demographics</span>
+                  <span className="font-mono text-primary font-bold">{p.population.toLocaleString()} residents</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 text-ink-soft text-[11px] pt-1 border-t border-line/50">
+                  <div>Seniors (60+): <strong className="text-ink">{p.elderly_pct ?? 0}%</strong></div>
+                  <div>Tin/Asbestos Roofs: <strong className="text-ink">{p.slum_roof_pct ?? 0}%</strong></div>
+                </div>
+              </div>
+            )}
             <ul className="space-y-2.5">
               {data.personas.order.map((key) => {
                 const persona = data.personas.personas[key];

@@ -119,11 +119,12 @@ class TestHonestyGuaranteesSurvive:
         statuses = " ".join(layer["status"] for layer in payload["meta"]["provenance"])
         assert "ASSUMED" in statuses
 
-    def test_vulnerability_is_still_a_declared_placeholder(self, payload):
+    def test_vulnerability_provenance_is_explicit(self, payload):
         vulnerability = [layer for layer in payload["meta"]["provenance"]
                          if "vulnerab" in layer["layer"].lower()]
         assert vulnerability, "vulnerability layer vanished from provenance"
-        assert "NOT FITTED" in vulnerability[0]["status"].upper()
+        status = vulnerability[0]["status"].upper()
+        assert "MEASURED" in status or "NOT FITTED" in status
 
     def test_exposure_response_is_still_uncalibrated(self, payload):
         assert payload["meta"]["exposure_response"]["is_calibrated"] is False
