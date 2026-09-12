@@ -51,6 +51,18 @@
       ],
       "cwd": "frontend",
       "port": 5174
+    },
+    {
+      "name": "heatlens-api-8000",
+      "runtimeExecutable": "C:/Users/HP/sih-heat/.venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "api.main:app",
+        "--port",
+        "8000"
+      ],
+      "port": 8000
     }
   ]
 }
