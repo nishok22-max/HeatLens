@@ -36,10 +36,35 @@ MAX_ROUNDS = 6   # hard cap on LLM call count per question
 # System prompt
 # ---------------------------------------------------------------------------
 
-_SYSTEM_CORE = """
+# The scope sentinel. Both agents ask for it in their prompt and both swap it
+# for a fixed reply after the loop: a prompt instruction is a request, and the
+# post-check is what makes the boundary a guarantee.
+OUT_OF_SCOPE_TOKEN = "[[OUT_OF_SCOPE]]"
+
+CHAT_OUT_OF_SCOPE_REPLY = (
+    "I can only answer questions about the HeatLens heat analysis for this "
+    "city, and about heat and health -- heat stress, outdoor-work safety, "
+    "advisories, and what the city can do about them. Ask me something like "
+    "\"Which neighbourhoods are hottest right now?\" or \"How long can a "
+    "construction worker safely work this afternoon?\""
+)
+
+_SYSTEM_CORE = f"""
 You are the HeatLens data assistant — a concise, precise guide to the
 city-level heat-stress analysis for Ahmedabad. You are also a knowledgeable
 heat-health advisor who can answer general physiology and first-aid questions.
+
+SCOPE (strict):
+- You cover the HeatLens analysis for this city, and heat and health: heat
+  stress, heatwave preparedness and response, outdoor-work safety, public
+  advisories, and the interventions the model covers. Heat-related physiology
+  and first aid are IN scope -- see GENERAL HEALTH KNOWLEDGE below.
+- Everything else is out of scope: programming, general trivia, sport,
+  politics, other cities, personal matters, any topic unrelated to heat and
+  health. For those, reply with exactly {OUT_OF_SCOPE_TOKEN} and nothing else.
+- "No tool covers it" is never a reason to answer from training data. It is a
+  reason to answer from your own knowledge ONLY when the question is about
+  heat or health; otherwise it means the question is out of scope.
 
 CORE RULES (non-negotiable):
 1. Every number in your answer must come from a tool return.
@@ -58,7 +83,7 @@ CORE RULES (non-negotiable):
    Clarify that mortality / casualty counts are not provided because mortality models
    are not calibrated to hospital records.
 
-GENERAL HEALTH KNOWLEDGE (when no tool covers the topic):
+GENERAL HEALTH KNOWLEDGE (heat-and-health topics only, when no tool covers them):
 - If the user asks a general physiology, first-aid, or public-health question
   that the HeatLens data tools do not cover (e.g. "what happens if I drink
   cold water vs normal water in extreme heat?"), you MUST answer using your
@@ -130,6 +155,7 @@ def run_agent(
     payload: dict | None = None,
     system_core: str | None = None,
     tools: list[dict] | None = None,
+    out_of_scope_reply: str | None = None,
 ) -> AgentResponse:
     """Run the full chat agent and return a grounded response.
 
@@ -141,6 +167,9 @@ def run_agent(
         system_core: Replaces the default system prompt (the what-if agent
                   uses a stricter, decision-focused one). Guards still apply.
         tools:    Restricts which tools the model may call. Defaults to all.
+        out_of_scope_reply: What to say when the model returns the scope
+                  sentinel. Defaults to the general chat wording; the what-if
+                  agent passes its own.
     """
     tool_specs = TOOL_SPECS if tools is None else tools
     # --- lazy provider ---
@@ -249,7 +278,23 @@ def run_agent(
             "Please try rephrasing your question."
         )
 
-    # 6. Numeric guard post-check.
+    # 6. Scope guard. Swapping the sentinel for a fixed reply here is what
+    #    stops off-topic prose reaching the UI; running it before the numeric
+    #    guard avoids spending a correction round rewriting an answer that is
+    #    about to be discarded anyway.
+    if OUT_OF_SCOPE_TOKEN in final_text:
+        return AgentResponse(
+            answer=out_of_scope_reply or CHAT_OUT_OF_SCOPE_REPLY,
+            tool_trace=tool_trace,
+            sources=sorted({t.source for t in tool_trace if t.source}),
+            retrieved_passages=retrieved_texts,
+            refused=True,
+            refusal_reason="out_of_scope",
+            guard_passed=True,  # a refusal states no figures
+            rounds=rounds,
+        )
+
+    # 7. Numeric guard post-check.
     guard = NumericGuard()
     guard_result = guard.check(final_text, all_tool_returns, question=question)
 
@@ -301,8 +346,6 @@ def run_agent(
 # the prompt asks for a sentinel on off-topic questions, and the sentinel is
 # swapped for a fixed reply here, so no off-topic prose ever reaches the UI.
 # ---------------------------------------------------------------------------
-
-OUT_OF_SCOPE_TOKEN = "[[OUT_OF_SCOPE]]"
 
 OUT_OF_SCOPE_REPLY = (
     "I can only help with heat-stress decisions for this city using HeatLens "
@@ -381,14 +424,12 @@ def run_whatif_agent(
     """Answer a free-form what-if as a grounded, decision-focused recommendation."""
     tools = [s for s in TOOL_SPECS if s["function"]["name"] in WHATIF_TOOL_NAMES]
     result = run_agent(question, dataset=dataset, provider=provider,
-                       payload=payload, system_core=_WHATIF_SYSTEM, tools=tools)
+                       payload=payload, system_core=_WHATIF_SYSTEM, tools=tools,
+                       out_of_scope_reply=OUT_OF_SCOPE_REPLY)
 
-    if OUT_OF_SCOPE_TOKEN in (result.answer or ""):
-        result.answer = OUT_OF_SCOPE_REPLY
-        result.refused = True
-        result.refusal_reason = "out_of_scope"
-        result.guard_passed = True
-        result.ungrounded_numbers = []
+    # run_agent performs the swap itself, so read its verdict rather than
+    # looking for a sentinel it has already replaced.
+    if result.refusal_reason == "out_of_scope":
         return WhatIfAgentResponse(agent=result, out_of_scope=True)
 
     scenarios = [

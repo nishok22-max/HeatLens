@@ -168,3 +168,47 @@ class TestWhatIfAgent:
         provider = Scripted([])
         out = ag.run_whatif_agent("how many will die if we add shade?", provider=provider)
         assert out.agent.refused and provider.calls == []
+
+
+class TestChatAgentScope:
+    """The general chat agent's scope boundary.
+
+    It was missing: the prompt told the model to answer from training
+    knowledge whenever no tool covered the topic, with no domain limit, so
+    "what is c-programming?" came back as a full essay on Dennis Ritchie.
+    The what-if agent had this guard from the start; these tests hold the
+    general agent to the same contract.
+    """
+
+    def test_the_prompt_carries_the_sentinel_and_the_boundary(self):
+        provider = Scripted([final("ok")])
+        ag.run_agent("how hot is it?", provider=provider)
+        system = provider.calls[0]["system"]
+        assert ag.OUT_OF_SCOPE_TOKEN in system
+        assert "SCOPE (strict)" in system
+
+    def test_off_topic_is_swapped_for_the_fixed_reply(self):
+        provider = Scripted([final(ag.OUT_OF_SCOPE_TOKEN)])
+        result = ag.run_agent("what is c-programming?", provider=provider)
+        assert result.refused
+        assert result.refusal_reason == "out_of_scope"
+        assert result.answer == ag.CHAT_OUT_OF_SCOPE_REPLY
+        # A refusal states no figures, so it is grounded by construction.
+        assert result.guard_passed
+
+    def test_the_sentinel_wins_even_when_wrapped_in_prose(self):
+        # A model that pads the sentinel must not leak the padding either.
+        provider = Scripted([final(f"Sure! {ag.OUT_OF_SCOPE_TOKEN}")])
+        result = ag.run_agent("write me a python function", provider=provider)
+        assert result.answer == ag.CHAT_OUT_OF_SCOPE_REPLY
+        assert "Sure!" not in result.answer
+
+    def test_heat_health_questions_are_still_answered(self):
+        # The general-health capability is deliberate; the boundary must not
+        # take it with it. Nothing off-topic here, so no sentinel is emitted.
+        answer = "General Health Advice: drink water steadily rather than in gulps."
+        provider = Scripted([final(answer)])
+        result = ag.run_agent("should I drink cold water in extreme heat?",
+                              provider=provider)
+        assert not result.refused
+        assert result.answer == answer
