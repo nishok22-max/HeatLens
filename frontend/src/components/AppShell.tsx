@@ -5,23 +5,13 @@ import { DATASETS } from "../data";
 import type { HeatData } from "../types";
 import { weatherSource } from "../summary";
 
-export type ViewKey =
-  | "dashboard"
-  | "map"
-  | "work"
-  | "scenarios"
-  | "findings"
-  | "advisory"
-  | "data";
+export type ViewKey = "dashboard" | "map" | "work" | "scenarios";
 
 export const VIEWS: { key: ViewKey; label: string; hint: string }[] = [
   { key: "dashboard", label: "Overview", hint: "Today's situation and what to do" },
   { key: "map", label: "Heat map", hint: "Every neighbourhood, hour by hour" },
   { key: "work", label: "Work safety", hint: "Safe outdoor work hours" },
   { key: "scenarios", label: "What if", hint: "Test interventions" },
-  { key: "advisory", label: "Public advisory", hint: "Warning message for SMS / WhatsApp" },
-  { key: "findings", label: "Findings", hint: "Why neighbourhoods differ" },
-  { key: "data", label: "Trust and data", hint: "Sources and limits" },
 ];
 
 export function AppShell({

@@ -178,7 +178,6 @@ function RoleActions({
             <strong>Public message:</strong> “{data.advisory.text.en}”
           </li>
         </ul>
-        <NavLink onClick={() => onNavigate("advisory")}>Open the public advisory</NavLink>
       </>
     );
   }
