@@ -19,6 +19,12 @@ import { ask, EXAMPLE_QUESTIONS, type WhatIfResult } from "../whatif";
  * With the API unreachable (USB stick, wifi off), the rule parser below
  * answers exactly as before, from the grid compiled into this page. The panel
  * never depends on the network to work -- only to be clever.
+ *
+ * Falling back mid-session -- the assistant times out, the parser answers --
+ * puts the panel into offline mode for that answer: offline label, offline
+ * examples, and a line saying which of the two answered. The two modes accept
+ * different phrasings, so a panel that still says "assistant" while the parser
+ * is answering offers questions that are certain to be refused.
  */
 
 interface AiScenario {
@@ -44,11 +50,19 @@ const AI_EXAMPLES = [
   "Which neighbourhoods should get relief first, and what would help there?",
 ];
 
+/** Why the assistant did not produce the answer on screen. A timeout is worth
+ *  asking again; an unreachable API is not, until it is back. */
+type FellBack = null | "timeout" | "error";
+
 async function askAssistant(question: string, dataset: string): Promise<AiAnswer> {
   const controller = new AbortController();
-  // A comparison question makes several tool rounds; ~40 s was measured on
-  // gemini-2.0-flash. Past this, the offline parser answers instead.
-  const timer = setTimeout(() => controller.abort(), 90000);
+  // The wait is the model's thinking time, not the network's. A comparison
+  // question makes several tool rounds: ~40 s on gemini-2.0-flash, but 64 s
+  // and then over 180 s for the SAME question on a large reasoning model,
+  // measured two runs apart. 90 s sat in the middle of that spread, so it
+  // aborted requests that would have answered and the panel refused at
+  // random. Past this, the offline parser answers instead.
+  const timer = setTimeout(() => controller.abort(), 240000);
   try {
     const res = await fetch(`${API_ORIGIN}/api/chat/whatif`, {
       method: "POST",
@@ -76,7 +90,7 @@ export function AskWhatIf({
   const [rule, setRule] = useState<WhatIfResult | null>(null);
   const [ai, setAi] = useState<AiAnswer | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fellBack, setFellBack] = useState(false);
+  const [fellBack, setFellBack] = useState<FellBack>(null);
 
   // The grid rides inside insights.json. If an older payload is being served,
   // hide the box rather than showing one that cannot answer.
@@ -86,7 +100,7 @@ export function AskWhatIf({
     setQuestion(text);
     setAi(null);
     setRule(null);
-    setFellBack(false);
+    setFellBack(null);
     if (!text.trim()) return;
 
     if (backendConnected) {
@@ -94,8 +108,11 @@ export function AskWhatIf({
       try {
         setAi(await askAssistant(text, dataset));
         return;
-      } catch {
-        setFellBack(true); // answer offline instead of failing
+      } catch (err) {
+        // Answer offline instead of failing -- but record which failure it
+        // was, because the two deserve different advice.
+        const aborted = (err as { name?: string } | null)?.name === "AbortError";
+        setFellBack(aborted ? "timeout" : "error");
       } finally {
         setLoading(false);
       }
@@ -103,19 +120,25 @@ export function AskWhatIf({
     setRule(ask(text, insights));
   }
 
-  const examples = backendConnected ? AI_EXAMPLES : EXAMPLE_QUESTIONS;
+  // The assistant and the parser take different phrasings. The parser refuses
+  // anything that does not name a lever, so showing it the assistant's example
+  // questions ("what protects construction workers most?") guarantees a
+  // "Not recognised" -- the panel would be offering questions it knows it
+  // cannot answer. After a fallback, show the parser's own examples instead.
+  const assistantMode = backendConnected && fellBack === null;
+  const examples = assistantMode ? AI_EXAMPLES : EXAMPLE_QUESTIONS;
 
   return (
     <Panel
       title="Ask your own what-if"
       subtitle={
-        backendConnected
+        assistantMode
           ? "Ask in your own words. The decision assistant compares the modelled options and recommends one. Every number comes from the heat model."
           : "Offline mode: name a lever (work hours, shade or greening). Answers come from pre-computed physics."
       }
       right={
         <span className="text-[12px] text-ink-soft">
-          {backendConnected ? "AI decision assistant" : "Offline parser"}
+          {assistantMode ? "AI decision assistant" : "Offline parser"}
         </span>
       }
     >
@@ -131,7 +154,7 @@ export function AskWhatIf({
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={
-            backendConnected
+            assistantMode
               ? "e.g. Should we shade sites or start work earlier for labourers?"
               : "e.g. shift work to 6am and shade 90%"
           }
@@ -168,7 +191,10 @@ export function AskWhatIf({
       )}
       {fellBack && (
         <p className="mt-4 text-[13px] text-exercise">
-          The decision assistant did not answer, so this was answered by the offline parser.
+          {fellBack === "timeout"
+            ? "The decision assistant took too long to answer, so the offline parser answered instead. Asking again often works."
+            : "The decision assistant could not be reached, so the offline parser answered instead."}{" "}
+          The parser recognises only the modelled levers, so name one: work hours, shade or greening.
         </p>
       )}
       {ai && <AiResult result={ai} />}
