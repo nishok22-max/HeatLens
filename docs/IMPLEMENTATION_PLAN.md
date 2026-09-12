@@ -144,7 +144,7 @@ Step 02 is safe to re-run. Every Overpass response is cached per tile, so an int
 
 ### 4.1 Frontend — BUILT
 
-React + TypeScript + Vite in `frontend/`. The production build is a single self-contained `index.html` of **1,819,432 bytes (1.82 MB, 357 KB gzipped)** with the data compiled in — 1.08 MB of that is the fourteen baked payloads. The build is byte-reproducible: `npm run build` reproduces the committed `HeatLens-dashboard.html` exactly (see `.gitattributes`, which stops `core.autocrlf` from rewriting it on checkout).
+React + TypeScript + Vite in `frontend/`. The production build is a single self-contained `index.html` of **1,765,537 bytes (1.77 MB, 348 KB gzipped)** with the data compiled in — 1.08 MB of that is the fourteen baked payloads. The build is byte-reproducible: `npm run build` reproduces the committed `HeatLens-dashboard.html` exactly (see `.gitattributes`, which stops `core.autocrlf` from rewriting it on checkout).
 
 > **Check for a stray `frontend/.env.local` before building the deliverable.** `VITE_API_BASE_URL` is read at build time and the API origin is compiled into the bundle, so a leftover dev override silently ships a page that points at the wrong port. It is gitignored, so nothing warns you. The shipped bundle must contain `localhost:8000` and nothing else — `grep -o 'localhost:[0-9]*' HeatLens-dashboard.html | sort -u`.
 

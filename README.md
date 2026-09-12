@@ -214,7 +214,7 @@ npm run dev      # development, http://localhost:5173
 npm run build    # production -> frontend/dist/index.html
 ```
 
-The production build is **a single self-contained `index.html`** (~1.82 MB, 357 KB
+The production build is **a single self-contained `index.html`** (~1.77 MB, 348 KB
 gzipped) with the CSS, JS and all fourteen data files — seven per dataset, historical
 and live — inlined. Open it directly from disk, email it,
 or put it on a USB stick — no server, no network, nothing to install.

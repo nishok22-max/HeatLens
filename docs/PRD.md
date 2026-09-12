@@ -219,7 +219,7 @@ The **PS** column links each requirement back to the problem-statement clause in
 
 | ID | Requirement | Target | Status |
 |---|---|---|---|
-| NFR-1 | **The demo runs fully offline** — nothing on stage depends on a network | Opens from a local file with wifi off | ✅ ~1.08 MB of data (two datasets), built into a single 1.82 MB page |
+| NFR-1 | **The demo runs fully offline** — nothing on stage depends on a network | Opens from a local file with wifi off | ✅ ~1.08 MB of data (two datasets), built into a single 1.77 MB page |
 | NFR-2 | **Explainable** — every score breaks down into named causes | Cause breakdown per zone | ✅ in `hexes.geojson` |
 | NFR-3 | **Honest about uncertainty** — no fake precision; approximations stated | A status per data layer | ✅ in `meta.json` |
 | NFR-4 | **Traceable data** — source, resolution, and a measured/assumed flag | Visible on screen | ✅ 7 layers tagged (8 after FR-18) |
