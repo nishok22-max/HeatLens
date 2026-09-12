@@ -72,6 +72,13 @@ export function statusTone(status: string): Tone {
   const s = status.toLowerCase();
   if (s.startsWith("measured")) return "ok";
   if (s.startsWith("published")) return "ok";
+  // Computed is not measured, but it is not a weakness either: deterministic
+  // physics from published equations, cross-checked against a second
+  // implementation. It earns the same tone as an observation.
+  if (s.startsWith("computed")) return "ok";
+  // A forecast is inherently uncertain, but that is the nature of forecasting,
+  // not a defect in the data. Distinct tone, deliberately not alarming.
+  if (s.startsWith("predicted")) return "accent";
   if (s.includes("not fitted") || s.includes("not calibrated")) return "flag";
   if (s.includes("assumed")) return "warn";
   return "warn";

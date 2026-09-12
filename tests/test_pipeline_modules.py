@@ -208,27 +208,72 @@ class TestVulnerability:
             ["a", "b", "c"], intensity=np.array([0.1, 0.5, 0.9]))
         assert len(set(surface.vulnerability.tolist())) == 1
 
-    def test_census_ward_vulnerability_is_measured_and_varies(self):
-        import json
-        vuln_path = ROOT / "data" / "processed" / "vulnerability_ahmedabad.json"
-        if not vuln_path.exists():
-            pytest.skip("vulnerability_ahmedabad.json missing")
-        source = vu.CensusWardVulnerability(vuln_path)
-        data = json.loads(vuln_path.read_text("utf-8"))
-        sample_cells = list(data["cells"].keys())[:20]
-        surface = source.build(sample_cells)
-        assert surface.is_placeholder is False
-        assert "MEASURED" in surface.provenance
-        # Vulnerability varies across cells because ward demographics differ!
-        assert len(set(surface.vulnerability.tolist())) > 1
-        assert np.all((surface.vulnerability >= 0.0) & (surface.vulnerability <= 1.0))
-        assert np.all((surface.exposure >= 0.0) & (surface.exposure <= 1.0))
-
     def test_risk_composition_is_bounded_and_monotonic(self):
         hazard = np.array([0.2, 0.5, 0.9])
         risk = vu.combine_risk(hazard, np.full(3, 0.5), np.full(3, 0.5))
         assert np.all((risk >= 0.0) & (risk <= 1.0))
         assert np.all(np.diff(risk) > 0)
+
+    def test_measured_exposure_keeps_vulnerability_placeholder(self):
+        """The D15 split: measuring population must NOT quietly upgrade the
+        vulnerability half. The two are reported separately precisely so the
+        measured one cannot lend credibility to the assumed one."""
+        surface = vu.MeasuredPopulationVulnerability().build(
+            ["a", "b"], exposure=np.array([0.1, 0.9]))
+        assert surface.exposure_is_measured is True
+        assert surface.is_placeholder is True          # vulnerability, still
+        assert len(set(surface.vulnerability.tolist())) == 1
+        flags = surface.as_dict()["a"]
+        assert flags["exposure_is_measured"] is True
+        assert flags["is_placeholder"] is True
+
+    def test_measured_exposure_refuses_to_invent_data(self):
+        """Without measured exposure this class must fail loudly rather than
+        fall back to a proxy that would be indistinguishable downstream."""
+        with pytest.raises(ValueError, match="measured exposure"):
+            vu.MeasuredPopulationVulnerability().build(["a", "b"])
+
+    def test_measured_exposure_breaks_the_hazard_degeneracy(self):
+        """Why this step exists at all.
+
+        With exposure derived from the hazard pattern, risk is a monotone
+        transform of hazard and reorders nothing. With independent population
+        it must be able to disagree -- a cooler but crowded zone outranking a
+        hotter empty one.
+        """
+        hazard = np.array([0.9, 0.5])          # cell 0 hotter
+        proxy = vu.PlaceholderVulnerability().build(
+            ["hot_empty", "cool_crowded"], intensity=np.array([0.9, 0.5]))
+        degenerate = vu.combine_risk(hazard, proxy.exposure, proxy.vulnerability)
+        assert degenerate[0] > degenerate[1]
+
+        measured = vu.MeasuredPopulationVulnerability().build(
+            ["hot_empty", "cool_crowded"], exposure=np.array([0.02, 1.0]))
+        real = vu.combine_risk(hazard, measured.exposure, measured.vulnerability)
+        assert real[1] > real[0], "population must be able to outrank heat"
+
+    def test_population_loader_refuses_partial_coverage(self, tmp_path):
+        """A zone missing from the file must not become exposure 0 -- that
+        reads as 'nobody at risk here', the worst possible silent failure."""
+        processed = tmp_path / "data" / "processed"
+        processed.mkdir(parents=True)
+        (processed / "population_x.json").write_text(json.dumps({
+            "source": {"provider": "WorldPop", "dataset": "wpgppop",
+                       "year": 2020, "native_resolution_m": 100},
+            "exposure_scaling": {"method": "density / p95"},
+            "cells": {"a": {"exposure": 0.5}},
+        }), encoding="utf-8")
+
+        got, why = vu.load_population_exposure(tmp_path, "x", ["a", "b"])
+        assert got is None and "missing" in why
+
+        got, why = vu.load_population_exposure(tmp_path, "x", ["a"])
+        assert got is not None and got.tolist() == [0.5]
+        assert "WorldPop" in why
+
+    def test_population_loader_absent_file_is_not_an_error(self, tmp_path):
+        got, why = vu.load_population_exposure(tmp_path, "nocity", ["a"])
+        assert got is None and "not found" in why
 
     def test_zero_exposure_collapses_risk(self):
         """Dangerous heat over an empty field is not a public-health emergency."""

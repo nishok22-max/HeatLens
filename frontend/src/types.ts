@@ -8,8 +8,14 @@
 
 export type MetricKey = "air_temp" | "wbgt" | "utci" | "risk";
 
-/** Provenance status vocabulary. The three non-"measured" values are the
- *  honesty guarantees and must remain visible in the UI. */
+/** Provenance status vocabulary. A status string starts with one of:
+ *  "measured"   — an instrument observed it
+ *  "computed"   — deterministic calculation from published equations
+ *  "predicted"  — a model forecast of a future value
+ *  "published"  — an international standard
+ *  "assumed" / "NOT FITTED" / "NOT CALIBRATED" — the honesty guarantees,
+ *  which must remain visible in the UI.
+ *  Parsed by statusTone() in ui.tsx and tierOf() in TrustCard.tsx. */
 export type ProvenanceStatus = string;
 
 export interface ProvenanceEntry {
@@ -85,8 +91,6 @@ export interface HexProperties {
   exposure: number;
   vulnerability: number;
   population?: number;
-  elderly_pct?: number;
-  slum_roof_pct?: number;
   peak_hour: number;
   wbgt_focus: number;
   utci_focus: number;

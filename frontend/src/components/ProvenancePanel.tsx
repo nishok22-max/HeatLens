@@ -4,9 +4,13 @@ import { Badge, Panel, statusTone } from "./ui";
 
 export function ProvenancePanel({ data }: { data: HeatData }) {
   const [showTechnical, setShowTechnical] = useState(false);
-  const flagged = data.meta.provenance.filter(
-    (p) => statusTone(p.status) !== "ok",
-  ).length;
+  // Counts layers that lean on a proxy or an unfitted assumption. A forecast
+  // ("accent") is NOT one of those -- it is uncertain by nature, not a stand-in
+  // for data we could not get -- so it is excluded alongside "ok".
+  const flagged = data.meta.provenance.filter((p) => {
+    const tone = statusTone(p.status);
+    return tone !== "ok" && tone !== "accent";
+  }).length;
 
   return (
     <Panel
@@ -120,6 +124,8 @@ function plainStatus(status: string): string {
   const s = status.toLowerCase();
   if (s.startsWith("measured")) return "Measured";
   if (s.startsWith("published")) return "Published standard";
+  if (s.startsWith("computed")) return "Computed";
+  if (s.startsWith("predicted")) return "Forecast";
   if (s.includes("not calibrated")) return "Not checked locally";
   if (s.includes("not fitted")) return "Stand-in proxy";
   if (s.includes("assumed")) return "Assumed parameter";
