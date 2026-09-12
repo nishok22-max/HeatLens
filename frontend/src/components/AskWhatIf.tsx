@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { CoolingRow, Insights, SchedulingRow } from "../types";
 import { API_ORIGIN } from "../data";
@@ -43,6 +43,9 @@ interface AiAnswer {
   out_of_scope: boolean;
   model: string;
 }
+
+/** When a wait stops looking normal and starts looking like a hang. */
+const SLOW_AFTER_S = 30;
 
 const AI_EXAMPLES = [
   "We can afford only one measure this week. What protects construction workers most?",
@@ -91,6 +94,16 @@ export function AskWhatIf({
   const [ai, setAi] = useState<AiAnswer | null>(null);
   const [loading, setLoading] = useState(false);
   const [fellBack, setFellBack] = useState<FellBack>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  // A comparison question has measured up to ~177 s on a large reasoning
+  // model. A spinner that never changes reads as a hang at that length, so
+  // count the seconds: the number moving is the evidence that it is alive.
+  useEffect(() => {
+    if (!loading) return;
+    const id = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [loading]);
 
   // The grid rides inside insights.json. If an older payload is being served,
   // hide the box rather than showing one that cannot answer.
@@ -104,6 +117,7 @@ export function AskWhatIf({
     if (!text.trim()) return;
 
     if (backendConnected) {
+      setElapsed(0);
       setLoading(true);
       try {
         setAi(await askAssistant(text, dataset));
@@ -185,9 +199,16 @@ export function AskWhatIf({
       </div>
 
       {loading && (
-        <p className="mt-4 text-[14px] text-ink-soft" role="status">
-          Comparing the modelled options…
-        </p>
+        <div className="mt-4 text-[14px] text-ink-soft" role="status">
+          Comparing the modelled options… {elapsed}s
+          {elapsed >= SLOW_AFTER_S && (
+            <div className="text-[13px] text-ink-faint mt-1">
+              A comparison makes several tool rounds, which has measured up to
+              three minutes on a large model. It will answer, or hand over to
+              the offline parser at four.
+            </div>
+          )}
+        </div>
       )}
       {fellBack && (
         <p className="mt-4 text-[13px] text-exercise">
