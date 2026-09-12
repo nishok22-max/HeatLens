@@ -22,7 +22,7 @@ export default defineConfig({
   // with no server. This is NFR-1 and it is pass/fail for the demo.
   base: './',
 
-  // No publicDir: the six baked files are imported and bundled by src/data.ts
+  // No publicDir: the fourteen baked files are imported and bundled by src/data.ts
   // instead of fetched, because fetch() is blocked from a file:// origin and
   // NFR-1 requires the built page to work straight from disk. See src/data.ts.
   publicDir: false,

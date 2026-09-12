@@ -144,7 +144,9 @@ Step 02 is safe to re-run. Every Overpass response is cached per tile, so an int
 
 ### 4.1 Frontend — BUILT
 
-React + TypeScript + Vite in `frontend/`. The production build is a single self-contained `index.html` of about 1.7 MB with the data compiled in.
+React + TypeScript + Vite in `frontend/`. The production build is a single self-contained `index.html` of **1,819,432 bytes (1.82 MB, 357 KB gzipped)** with the data compiled in — 1.08 MB of that is the fourteen baked payloads. The build is byte-reproducible: `npm run build` reproduces the committed `HeatLens-dashboard.html` exactly (see `.gitattributes`, which stops `core.autocrlf` from rewriting it on checkout).
+
+> **Check for a stray `frontend/.env.local` before building the deliverable.** `VITE_API_BASE_URL` is read at build time and the API origin is compiled into the bundle, so a leftover dev override silently ships a page that points at the wrong port. It is gitignored, so nothing warns you. The shipped bundle must contain `localhost:8000` and nothing else — `grep -o 'localhost:[0-9]*' HeatLens-dashboard.html | sort -u`.
 
 | # | Component | Status |
 |---|---|---|
@@ -157,7 +159,7 @@ React + TypeScript + Vite in `frontend/`. The production build is a single self-
 | 7 | Provenance panel — 7 layers, 3 flagged as not measured | done |
 | 8 | What-if scenarios panel (shift hours · shade · greening) | done — plus a plain-English **Ask a what-if** box over a pre-baked grid, answering offline |
 | 9 | Live / historical dataset switch | done |
-| 10 | **Open the built page from a local file with wifi off** | **TODO — still open. This is the NFR-1 and M4 proof. Do it before the pitch** |
+| 10 | **Open the built page from a local file with wifi off** | **Pre-flight done, human tick still owed.** The bundle was audited and it has nothing left to fetch: 0 `<script src>`, 0 `<link>`, 0 `<img>`, 0 `<iframe>`, 0 `new Worker`, 0 service-worker registration, 0 `localStorage`/`indexedDB` (the two `serviceworker` string hits are literals in React's `preinitModule` switch, not a registration). Every `http(s)` URL in the file is an XML namespace, a React/Redux error-message URL, or `localhost:8000` — the enhancement layer, behind a 3 s timeout that degrades to the baked floor. Rendered from the built artifact with 0 console errors and 1 network request (the document). **What is still owed is the literal act: double-click the file in Chrome with wifi off and confirm.** |
 | 11 | Screen-recorded backup video | TODO — live demos die |
 
 **Two decisions worth knowing about** *(a third, the MapLibre removal, has been promoted to [`DECISIONS.md`](DECISIONS.md) D17, because it is an architectural fact rather than a frontend note)*:
@@ -191,7 +193,7 @@ The shrinking effect **did not move with humidity**. So the mechanism is not hum
 
 | # | Task | Why |
 |---|---|---|
-| 1 | **Open the built page from a local file with wifi off** | It is M4, it is NFR-1, and it is still unticked |
+| 1 | **Open the built page from a local file with wifi off** | It is M4, it is NFR-1, and it is still unticked. The bundle has been audited clean and renders with 0 console errors (§4.1 item 10) — what remains is performing the act, not investigating it |
 | 2 | **Native-speaker review of the Hindi and Gujarati text** | Machine-composed; an early draft contained a Lao character inside the Gujarati |
 | 3 | Check the May 2010 death toll and the Heat Action Plan evaluation against original sources | Judges verify numbers |
 | 4 | Source real dose-response coefficients, or present risk as strictly relative | Currently published defaults |
