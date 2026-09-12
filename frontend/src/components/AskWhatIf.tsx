@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { CoolingRow, Insights, SchedulingRow } from "../types";
 import { API_ORIGIN } from "../data";
@@ -19,6 +19,12 @@ import { ask, EXAMPLE_QUESTIONS, type WhatIfResult } from "../whatif";
  * With the API unreachable (USB stick, wifi off), the rule parser below
  * answers exactly as before, from the grid compiled into this page. The panel
  * never depends on the network to work -- only to be clever.
+ *
+ * Falling back mid-session -- the assistant times out, the parser answers --
+ * puts the panel into offline mode for that answer: offline label, offline
+ * examples, and a line saying which of the two answered. The two modes accept
+ * different phrasings, so a panel that still says "assistant" while the parser
+ * is answering offers questions that are certain to be refused.
  */
 
 interface AiScenario {
@@ -38,17 +44,28 @@ interface AiAnswer {
   model: string;
 }
 
+/** When a wait stops looking normal and starts looking like a hang. */
+const SLOW_AFTER_S = 30;
+
 const AI_EXAMPLES = [
   "We can afford only one measure this week. What protects construction workers most?",
   "Is tarpaulin over work sites better than planting trees?",
   "Which neighbourhoods should get relief first, and what would help there?",
 ];
 
+/** Why the assistant did not produce the answer on screen. A timeout is worth
+ *  asking again; an unreachable API is not, until it is back. */
+type FellBack = null | "timeout" | "error";
+
 async function askAssistant(question: string, dataset: string): Promise<AiAnswer> {
   const controller = new AbortController();
-  // A comparison question makes several tool rounds; ~40 s was measured on
-  // gemini-2.0-flash. Past this, the offline parser answers instead.
-  const timer = setTimeout(() => controller.abort(), 90000);
+  // The wait is the model's thinking time, not the network's. A comparison
+  // question makes several tool rounds: ~40 s on gemini-2.0-flash, but 64 s
+  // and then over 180 s for the SAME question on a large reasoning model,
+  // measured two runs apart. 90 s sat in the middle of that spread, so it
+  // aborted requests that would have answered and the panel refused at
+  // random. Past this, the offline parser answers instead.
+  const timer = setTimeout(() => controller.abort(), 240000);
   try {
     const res = await fetch(`${API_ORIGIN}/api/chat/whatif`, {
       method: "POST",
@@ -76,7 +93,17 @@ export function AskWhatIf({
   const [rule, setRule] = useState<WhatIfResult | null>(null);
   const [ai, setAi] = useState<AiAnswer | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fellBack, setFellBack] = useState(false);
+  const [fellBack, setFellBack] = useState<FellBack>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  // A comparison question has measured up to ~177 s on a large reasoning
+  // model. A spinner that never changes reads as a hang at that length, so
+  // count the seconds: the number moving is the evidence that it is alive.
+  useEffect(() => {
+    if (!loading) return;
+    const id = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [loading]);
 
   // The grid rides inside insights.json. If an older payload is being served,
   // hide the box rather than showing one that cannot answer.
@@ -86,16 +113,20 @@ export function AskWhatIf({
     setQuestion(text);
     setAi(null);
     setRule(null);
-    setFellBack(false);
+    setFellBack(null);
     if (!text.trim()) return;
 
     if (backendConnected) {
+      setElapsed(0);
       setLoading(true);
       try {
         setAi(await askAssistant(text, dataset));
         return;
-      } catch {
-        setFellBack(true); // answer offline instead of failing
+      } catch (err) {
+        // Answer offline instead of failing -- but record which failure it
+        // was, because the two deserve different advice.
+        const aborted = (err as { name?: string } | null)?.name === "AbortError";
+        setFellBack(aborted ? "timeout" : "error");
       } finally {
         setLoading(false);
       }
@@ -103,19 +134,25 @@ export function AskWhatIf({
     setRule(ask(text, insights));
   }
 
-  const examples = backendConnected ? AI_EXAMPLES : EXAMPLE_QUESTIONS;
+  // The assistant and the parser take different phrasings. The parser refuses
+  // anything that does not name a lever, so showing it the assistant's example
+  // questions ("what protects construction workers most?") guarantees a
+  // "Not recognised" -- the panel would be offering questions it knows it
+  // cannot answer. After a fallback, show the parser's own examples instead.
+  const assistantMode = backendConnected && fellBack === null;
+  const examples = assistantMode ? AI_EXAMPLES : EXAMPLE_QUESTIONS;
 
   return (
     <Panel
       title="Ask your own what-if"
       subtitle={
-        backendConnected
+        assistantMode
           ? "Ask in your own words. The decision assistant compares the modelled options and recommends one. Every number comes from the heat model."
           : "Offline mode: name a lever (work hours, shade or greening). Answers come from pre-computed physics."
       }
       right={
         <span className="text-[12px] text-ink-soft">
-          {backendConnected ? "AI decision assistant" : "Offline parser"}
+          {assistantMode ? "AI decision assistant" : "Offline parser"}
         </span>
       }
     >
@@ -131,7 +168,7 @@ export function AskWhatIf({
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={
-            backendConnected
+            assistantMode
               ? "e.g. Should we shade sites or start work earlier for labourers?"
               : "e.g. shift work to 6am and shade 90%"
           }
@@ -162,13 +199,23 @@ export function AskWhatIf({
       </div>
 
       {loading && (
-        <p className="mt-4 text-[14px] text-ink-soft" role="status">
-          Comparing the modelled options…
-        </p>
+        <div className="mt-4 text-[14px] text-ink-soft" role="status">
+          Comparing the modelled options… {elapsed}s
+          {elapsed >= SLOW_AFTER_S && (
+            <div className="text-[13px] text-ink-faint mt-1">
+              A comparison makes several tool rounds, which has measured up to
+              three minutes on a large model. It will answer, or hand over to
+              the offline parser at four.
+            </div>
+          )}
+        </div>
       )}
       {fellBack && (
         <p className="mt-4 text-[13px] text-exercise">
-          The decision assistant did not answer, so this was answered by the offline parser.
+          {fellBack === "timeout"
+            ? "The decision assistant took too long to answer, so the offline parser answered instead. Asking again often works."
+            : "The decision assistant could not be reached, so the offline parser answered instead."}{" "}
+          The parser recognises only the modelled levers, so name one: work hours, shade or greening.
         </p>
       )}
       {ai && <AiResult result={ai} />}

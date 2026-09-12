@@ -13,19 +13,12 @@ import { CellDetail } from "./components/CellDetail";
 import { ZonePicker } from "./components/ZonePicker";
 import { StatusHero } from "./components/StatusHero";
 import type { Role } from "./components/StatusHero";
-import { WhyStrip } from "./components/WhyStrip";
 import { PriorityZones } from "./components/PriorityZones";
 import { DailyOutlook } from "./components/DailyOutlook";
-import { TrustCard } from "./components/TrustCard";
-import { Drivers } from "./components/Drivers";
 import { Scenarios } from "./components/Scenarios";
 import { AskWhatIf } from "./components/AskWhatIf";
 import { ActionList } from "./components/ActionList";
-import { IndexComparison } from "./components/IndexComparison";
-import { NightRecovery } from "./components/NightRecovery";
 import { SafeWorkGrid } from "./components/SafeWorkGrid";
-import { AdvisoryPanel } from "./components/AdvisoryPanel";
-import { ProvenancePanel } from "./components/ProvenancePanel";
 import { ChatPanel } from "./components/ChatPanel";
 import { checkBackendHealth, fetchHeatDataFromAPI } from "./api";
 
@@ -253,37 +246,6 @@ export default function App() {
             <Scenarios insights={data.insights} />
             <AskWhatIf insights={data.insights} backendConnected={backendConnected} dataset={dataset} />
             <ActionList insights={data.insights} />
-          </div>
-        )}
-
-        {view === "findings" && (
-          <div className="space-y-5">
-            <ViewHeading title="Findings" subtitle="Why neighbourhoods differ, why one index is not enough, and how much the nights cooled." />
-            <WhyStrip data={data} onNavigate={setView} onDataset={switchDataset} />
-            <IndexComparison data={data} />
-            <NightRecovery data={data} />
-            <Drivers insights={data.insights} />
-          </div>
-        )}
-
-        {view === "advisory" && (
-          <div className="space-y-5">
-            <ViewHeading
-              title="Public advisory"
-              subtitle="The warning message the system generates, ready for SMS or WhatsApp. Not sent: this is an exercise."
-            />
-            <div className="grid lg:grid-cols-2 gap-5 items-start">
-              <AdvisoryPanel data={data} />
-              <ActionList insights={data.insights} />
-            </div>
-          </div>
-        )}
-
-        {view === "data" && (
-          <div className="space-y-5">
-            <ViewHeading title="Trust and data" subtitle="Where every number comes from, and what is measured versus assumed." />
-            <TrustCard data={data} onNavigate={setView} />
-            <ProvenancePanel data={data} />
           </div>
         )}
       </AppShell>

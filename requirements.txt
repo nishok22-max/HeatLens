@@ -36,6 +36,8 @@ uvicorn>=0.28.0
 # google-generativeai: Gemini function-calling backend. Swap for groq etc.
 # via the provider abstraction in src/heatstress/chat/provider.py.
 google-generativeai>=0.8
+# groq: Groq function-calling backend (LLM_PROVIDER=groq).
+groq>=0.11
 # model2vec: local dense embeddings for doc retrieval (~30 MB, no GPU, no
 # network call). The agent rebuilds the index from scratch if needed.
 model2vec>=0.3
