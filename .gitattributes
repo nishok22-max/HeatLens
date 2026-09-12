@@ -1,0 +1,11 @@
+# The single-file dashboard is a build artifact and the thing that gets carried
+# on a USB stick for the NFR-1 offline demo. It must be byte-identical to what
+# `npm run build` produced. With core.autocrlf=true (the Windows default) git
+# otherwise re-inflates every LF to CRLF on checkout, which rewrites the newline
+# literals inside the bundled JS strings — the file on disk stops matching the
+# file that was built.
+HeatLens-dashboard.html  -text
+
+# Vite copies this template's line endings straight through into dist/index.html,
+# so it has to stay LF or the build output is not reproducible across machines.
+frontend/index.html      text eol=lf
