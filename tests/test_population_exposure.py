@@ -45,26 +45,36 @@ def no_retriever(monkeypatch):
 
 
 class TestPopulationExposureTool:
-    def test_tool_returns_measured_demographics(self):
+    def test_tool_returns_modelled_population_only(self):
         res = execute_tool("get_population_exposure", {"top_n": 5})
         assert "_source" in res
         assert res.get("_is_measured") is True
-        assert res["total_population"] > 5_000_000  # Ahmedabad ~6.87M
-        
+        assert "WorldPop" in res["_source"]
+        # WorldPop is modelled, and the payload must say so rather than
+        # implying a census count.
+        assert "modelled" in res["_population_nature"].lower()
+
+        assert res["total_population"] > 1_000_000
         exposure = res["exposure_by_heat_severity"]
         assert exposure["extreme_heat_utci_46_plus"] > 0
         assert exposure["very_strong_heat_utci_42_to_46"] >= 0
-        assert sum(exposure.values()) == res["total_population"]
-
-        vuln = res["vulnerable_populations_citywide"]
-        assert vuln["elderly_60_plus"] > 0
-        assert vuln["infants_and_children_under_6"] > 0
-        assert vuln["informal_tin_or_asbestos_roof_dwellers"] > 0
-        assert vuln["outdoor_and_informal_laborers"] > 0
+        assert abs(sum(exposure.values()) - res["total_population"]) <= len(exposure)
 
         assert len(res["top_exposed_wards"]) <= 5
         assert len(res["top_exposed_wards"]) > 0
         assert res["top_exposed_wards"][0]["total_population"] > 0
+
+    def test_tool_refuses_to_invent_demographics(self):
+        """There is no ward-level age/roof/occupation table in this repo. The
+        tool must expose that gap instead of multiplying a made-up fraction by a
+        real headcount, which is what the deleted Census-typology path did."""
+        res = execute_tool("get_population_exposure", {"top_n": 5})
+        assert "vulnerable_populations_citywide" not in res
+        for ward in res["top_exposed_wards"]:
+            assert "elderly_population" not in ward
+            assert "informal_roof_population" not in ward
+        assert "_not_available" in res
+        assert "elderly" in res["_not_available"].lower()
 
     def test_tool_is_present_in_tool_specs(self):
         spec_names = [s["function"]["name"] for s in TOOL_SPECS]
@@ -76,7 +86,6 @@ class TestChatAgentPopulationExposure:
         tool_data = execute_tool("get_population_exposure", {"top_n": 5})
         total_pop = tool_data["total_population"]
         extreme_pop = tool_data["exposure_by_heat_severity"]["extreme_heat_utci_46_plus"]
-        elderly = tool_data["vulnerable_populations_citywide"]["elderly_60_plus"]
 
         provider = ScriptedProvider([
             LLMResponse(
@@ -87,8 +96,7 @@ class TestChatAgentPopulationExposure:
             LLMResponse(
                 text=(
                     f"Across Ahmedabad, {extreme_pop} residents out of a total population of {total_pop} "
-                    f"are exposed to extreme heat stress. Approximately {elderly} elderly residents live "
-                    f"in high-vulnerability neighbourhoods."
+                    f"are exposed to extreme heat stress."
                 ),
                 tool_calls=[],
                 stop_reason="end_turn",
@@ -100,7 +108,6 @@ class TestChatAgentPopulationExposure:
         assert response.guard_passed, f"Numeric guard failed: {response.ungrounded_numbers}"
         assert str(extreme_pop) in response.answer
         assert str(total_pop) in response.answer
-        assert str(elderly) in response.answer
 
     def test_casualty_and_death_toll_still_refused(self):
         """Even with population measured, mortality forecasts remain uncalibrated."""

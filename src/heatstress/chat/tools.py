@@ -453,8 +453,20 @@ def _get_hottest_zones(args: dict, payload: dict | None, live: bool) -> dict:
 
 
 def _get_population_exposure(args: dict, payload: dict | None, live: bool) -> dict:
-    """Return population exposure to heat stress, breakdown of vulnerable groups,
-    and ward-level headcount statistics.
+    """How many people are standing in the heat, per zone and per severity band.
+
+    Backed by ``data/processed/population_ahmedabad.json`` (WorldPop zonal
+    statistics). Two things this deliberately does NOT return, because no source
+    for them exists in this repo:
+
+      * age, roof-material or occupation splits -- there is no ward-level
+        demographic table here, so an "elderly in extreme heat" count would be a
+        fabricated number wearing a measured label;
+      * casualties. That is the calibration refusal, and it is unchanged.
+
+    WorldPop is itself modelled -- census totals disaggregated onto a 100 m grid
+    with covariates -- so the payload says "modelled residential population",
+    never "a count of people".
     """
     if payload and "map" in payload:
         geojson = payload["map"]
@@ -469,130 +481,116 @@ def _get_population_exposure(args: dict, payload: dict | None, live: bool) -> di
     if not features:
         return {"error": "No spatial grid features found", "_source": src}
 
-    vuln_path = _DATA_ROOT.parents[1] / "data" / "processed" / "vulnerability_ahmedabad.json"
-    vuln_cells: dict[str, dict] = {}
-    if vuln_path.exists():
-        try:
-            vuln_cells = json.loads(vuln_path.read_text("utf-8")).get("cells", {})
-        except Exception:
-            pass
+    pop_path = (_DATA_ROOT.parents[1] / "data" / "processed"
+                / "population_ahmedabad.json")
+    if not pop_path.exists():
+        return {
+            "error": (
+                "No measured population layer. Run scripts/14_population.py to "
+                "fetch WorldPop zonal statistics."
+            ),
+            "_is_measured": False,
+            "_source": src,
+        }
 
-    total_pop = 0
-    pop_extreme = 0        # UTCI >= 46
-    pop_very_strong = 0    # 42 <= UTCI < 46
-    pop_strong = 0         # 38 <= UTCI < 42
-    pop_moderate_or_less = 0
+    pop_payload = json.loads(pop_path.read_text("utf-8"))
+    pop_cells = pop_payload.get("cells", {})
+    pop_source = pop_payload.get("source", {})
 
-    total_elderly = 0
-    total_infants = 0
-    total_slum_roof = 0
-    total_outdoor_workers = 0
-
+    total_pop = 0.0
+    bands = {"extreme_heat_utci_46_plus": 0.0,
+             "very_strong_heat_utci_42_to_46": 0.0,
+             "strong_heat_utci_38_to_42": 0.0,
+             "moderate_heat_below_38": 0.0}
     ward_stats: dict[str, dict] = {}
+    missing = 0
 
     for f in features:
         p = f.get("properties", {})
         cell_id = p.get("h3_index", "")
-        pop = int(p.get("population", 0))
-        if pop <= 0:
-            vc = vuln_cells.get(cell_id, {})
-            pop = int(vc.get("population", 0))
-
+        row = pop_cells.get(cell_id)
+        if row is None:
+            missing += 1
+            continue
+        pop = float(row.get("population", 0.0))
         total_pop += pop
+
         utci = float(p.get("utci_focus", 0.0))
         risk = float(p.get("risk_focus", 0.0))
-
         if utci >= 46.0:
-            pop_extreme += pop
+            band = "extreme_heat_utci_46_plus"
         elif utci >= 42.0:
-            pop_very_strong += pop
+            band = "very_strong_heat_utci_42_to_46"
         elif utci >= 38.0:
-            pop_strong += pop
+            band = "strong_heat_utci_38_to_42"
         else:
-            pop_moderate_or_less += pop
-
-        # Demographics
-        e_val = float(p.get("elderly_pct", 0.0))
-        elderly_frac = (e_val / 100.0) if e_val > 1.0 else e_val
-        s_val = float(p.get("slum_roof_pct", 0.0))
-        slum_frac = (s_val / 100.0) if s_val > 1.0 else s_val
-
-        vc = vuln_cells.get(cell_id, {})
-        infant_frac = float(vc.get("infant_pct", 0.10))
-        outdoor_frac = float(vc.get("outdoor_worker_pct", 0.25))
-
-        total_elderly += int(pop * elderly_frac)
-        total_infants += int(pop * infant_frac)
-        total_slum_roof += int(pop * slum_frac)
-        total_outdoor_workers += int(pop * outdoor_frac)
+            band = "moderate_heat_below_38"
+        bands[band] += pop
 
         place = p.get("place") or "Unknown"
-        if place not in ward_stats:
-            ward_stats[place] = {
-                "place": place,
-                "population": 0,
-                "pop_in_extreme_heat": 0,
-                "utci_max": utci,
-                "risk_max": risk,
-                "elderly_pop": 0,
-                "slum_roof_pop": 0,
-            }
-        ws = ward_stats[place]
+        ws = ward_stats.setdefault(place, {
+            "place": place, "population": 0.0,
+            "pop_in_extreme_heat": 0.0, "utci_max": utci, "risk_max": risk,
+        })
         ws["population"] += pop
         if utci >= 46.0:
             ws["pop_in_extreme_heat"] += pop
         ws["utci_max"] = max(ws["utci_max"], utci)
         ws["risk_max"] = max(ws["risk_max"], risk)
-        ws["elderly_pop"] += int(pop * elderly_frac)
-        ws["slum_roof_pop"] += int(pop * slum_frac)
 
-    # Top wards ranked by population exposure
-    sorted_wards = sorted(
+    top_n = min(int(args.get("top_n", 5)), 10)
+    top_wards = sorted(
         ward_stats.values(),
         key=lambda w: (w["pop_in_extreme_heat"], w["population"]),
         reverse=True,
-    )
-    top_n = min(int(args.get("top_n", 5)), 10)
-    top_wards = sorted_wards[:top_n]
+    )[:top_n]
 
     focus = meta.get("focus", {})
-    return {
+    out = {
         "city": meta.get("city", "Ahmedabad"),
         "focus_date": focus.get("date"),
         "focus_hour_ist": focus.get("hour_ist"),
-        "total_population": total_pop,
-        "exposure_by_heat_severity": {
-            "extreme_heat_utci_46_plus": pop_extreme,
-            "very_strong_heat_utci_42_to_46": pop_very_strong,
-            "strong_heat_utci_38_to_42": pop_strong,
-            "moderate_heat_below_38": pop_moderate_or_less,
-        },
-        "vulnerable_populations_citywide": {
-            "elderly_60_plus": total_elderly,
-            "infants_and_children_under_6": total_infants,
-            "informal_tin_or_asbestos_roof_dwellers": total_slum_roof,
-            "outdoor_and_informal_laborers": total_outdoor_workers,
-        },
+        "total_population": int(round(total_pop)),
+        "exposure_by_heat_severity": {k: int(round(v)) for k, v in bands.items()},
         "top_exposed_wards": [
             {
                 "place": w["place"],
-                "total_population": w["population"],
-                "population_in_extreme_heat": w["pop_in_extreme_heat"],
+                "total_population": int(round(w["population"])),
+                "population_in_extreme_heat": int(round(w["pop_in_extreme_heat"])),
                 "peak_utci_c": round(w["utci_max"], 1),
                 "peak_relative_risk": round(w["risk_max"], 3),
-                "elderly_population": w["elderly_pop"],
-                "informal_roof_population": w["slum_roof_pop"],
             }
             for w in top_wards
         ],
         "_is_measured": True,
-        "_source": "Census 2011 AMC Ward Demographics + GHS-POP Gridded Population & " + src,
+        "_population_nature": pop_source.get(
+            "nature",
+            "modelled residential population; census totals disaggregated onto "
+            "a grid using covariates",
+        ),
+        "_not_available": (
+            "No age, roof-material or occupation breakdown exists for these "
+            "zones, so counts of elderly, infants, informal-roof dwellers or "
+            "outdoor workers cannot be given. Vulnerability remains a city-wide "
+            "constant and does not vary between zones."
+        ),
+        "_source": (
+            f"{pop_source.get('provider', 'WorldPop')} "
+            f"{pop_source.get('dataset', '')} {pop_source.get('year', '')} "
+            f"({pop_source.get('native_resolution_m', 100)} m) + {src}"
+        ).strip(),
         "_note": (
-            "Demographics are MEASURED from AMC ward-level Census 2011 and GHSL data. "
-            "Absolute casualty / death figures are not provided because mortality models "
-            "are not calibrated to local hospital records."
+            "Population is modelled, not counted. Absolute casualty or death "
+            "figures are still not provided: the exposure-response model is not "
+            "calibrated to local health records."
         ),
     }
+    if missing:
+        out["_coverage_warning"] = (
+            f"{missing} of {len(features)} zones have no population row and "
+            "were excluded from every total."
+        )
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -802,11 +800,12 @@ TOOL_SPECS: list[dict] = [
         "function": {
             "name": "get_population_exposure",
             "description": (
-                "Returns measured population exposure to heat stress, including total population "
-                "in extreme heat (UTCI >= 46°C), vulnerable demographic counts (elderly 60+, "
-                "infants under 6, tin/asbestos roof dwellers, outdoor workers), and top affected wards. "
-                "Use for questions like 'how many people are at risk', 'population exposed', or "
-                "'who is most vulnerable'."
+                "Returns modelled residential population (WorldPop) exposed to heat stress: "
+                "totals per UTCI severity band and the most exposed wards. "
+                "Use for 'how many people are at risk' or 'population exposed'. "
+                "It has NO age, roof-material or occupation breakdown, so it cannot "
+                "answer 'how many elderly' or 'who is most vulnerable' -- say so rather "
+                "than estimating."
             ),
             "parameters": {
                 "type": "object",

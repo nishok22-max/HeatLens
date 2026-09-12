@@ -152,8 +152,13 @@ def run_agent(
 
     # 1. Refusal check (before any LLM call — saves tokens and is guaranteed).
     from pathlib import Path
-    vuln_path = Path(__file__).resolve().parents[3] / "data" / "processed" / "vulnerability_ahmedabad.json"
-    has_pop = vuln_path.exists()
+    # Population, not vulnerability: the headcount refusal is lifted only when a
+    # measured population layer exists (scripts/14_population.py -> WorldPop).
+    # Vulnerability stays a placeholder either way, so questions about WHO is
+    # vulnerable are still answered by the tool's own _not_available field.
+    pop_path = (Path(__file__).resolve().parents[3]
+                / "data" / "processed" / "population_ahmedabad.json")
+    has_pop = pop_path.exists()
     refusal_table = RefusalTable(has_population_data=has_pop)
     refusal = refusal_table.check(question)
     if refusal:

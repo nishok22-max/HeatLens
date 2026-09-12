@@ -208,22 +208,6 @@ class TestVulnerability:
             ["a", "b", "c"], intensity=np.array([0.1, 0.5, 0.9]))
         assert len(set(surface.vulnerability.tolist())) == 1
 
-    def test_census_ward_vulnerability_is_measured_and_varies(self):
-        import json
-        vuln_path = ROOT / "data" / "processed" / "vulnerability_ahmedabad.json"
-        if not vuln_path.exists():
-            pytest.skip("vulnerability_ahmedabad.json missing")
-        source = vu.CensusWardVulnerability(vuln_path)
-        data = json.loads(vuln_path.read_text("utf-8"))
-        sample_cells = list(data["cells"].keys())[:20]
-        surface = source.build(sample_cells)
-        assert surface.is_placeholder is False
-        assert "MEASURED" in surface.provenance
-        # Vulnerability varies across cells because ward demographics differ!
-        assert len(set(surface.vulnerability.tolist())) > 1
-        assert np.all((surface.vulnerability >= 0.0) & (surface.vulnerability <= 1.0))
-        assert np.all((surface.exposure >= 0.0) & (surface.exposure <= 1.0))
-
     def test_risk_composition_is_bounded_and_monotonic(self):
         hazard = np.array([0.2, 0.5, 0.9])
         risk = vu.combine_risk(hazard, np.full(3, 0.5), np.full(3, 0.5))

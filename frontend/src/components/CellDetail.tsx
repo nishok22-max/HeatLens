@@ -179,8 +179,6 @@ export function CellDetail({
                   <span className="font-mono text-primary font-bold">{p.population.toLocaleString()} residents</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-2 text-ink-soft text-[11px] pt-1 border-t border-line/50">
-                  <div>Seniors (60+): <strong className="text-ink">{p.elderly_pct ?? 0}%</strong></div>
-                  <div>Tin/Asbestos Roofs: <strong className="text-ink">{p.slum_roof_pct ?? 0}%</strong></div>
                 </div>
               </div>
             )}

@@ -91,8 +91,6 @@ export interface HexProperties {
   exposure: number;
   vulnerability: number;
   population?: number;
-  elderly_pct?: number;
-  slum_roof_pct?: number;
   peak_hour: number;
   wbgt_focus: number;
   utci_focus: number;
